@@ -7,6 +7,7 @@ erDiagram
         string product_name
         string category
         string size_or_variant
+        string color
         string base_unit
         int units_per_base_unit
         int default_units_per_packet

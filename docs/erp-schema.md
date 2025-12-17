@@ -40,6 +40,7 @@ Defines core product identity (SR Number) and basic characteristics.
 | product_name             | Name of product                     |
 | category                 | button / elastic / tape / accessory |
 | size_or_variant          | e.g., 16L, 24L                      |
+| color                    | product color                       |
 | base_unit                | GROSS / PCS / METER / ROLL / SET    |
 | units_per_base_unit      | e.g., 144 for GROSS                 |
 | default_units_per_packet | Default packaging quantity          |
