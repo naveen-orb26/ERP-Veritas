@@ -1,94 +1,123 @@
-
 # ⭐ **2️⃣ Architecture Overview**
 
-
-This document explains **how the system is structured**, how backend, frontend, DB, storage, and network interact.
-It is NOT technical code — it’s conceptual architecture and diagrams in text.
+This document explains **how the system is structured**, how backend, frontend, database, storage, and network interact.
+It is conceptual architecture — not implementation-level code.
 
 ---
 
 # 📄 **ERP-Veritas – Architecture Overview**
 
-ERP-Veritas is a modular ERP system built to support:
+ERP-Veritas is a modular ERP system designed for manufacturing units producing apparel trims and accessories.
+
+The architecture supports:
 
 * Local development
 * LAN/Wi-Fi deployment
-* Future migration to cloud (AWS)
+* Future cloud migration (AWS-ready)
 * Future mobile app integration
 
-The architecture is designed to be clean, layered, and scalable.
+The design emphasizes modularity, clean separation of concerns, and long-term maintainability.
 
 ---
 
 # 1. High-Level Architecture Diagram (Text Version)
 
 ```
-                        ┌───────────────────────┐
-                        │       Frontend         │
-                        │    (React Web App)     │
-                        └─────────────▲──────────┘
-                                      │ HTTPS/REST API
-                                      │
-                        ┌─────────────┴──────────┐
-                        │        Backend          │
-                        │ Django + DRF (API Layer)│
-                        │                         │
-                        │  11 Independent Modules │
-                        └─────────────▲──────────┘
-                                      │
-                      ┌───────────────┴──────────────┐
-                      │         PostgreSQL DB         │
-                      │ (Central relational database) │
-                      └───────────────▲──────────────┘
-                                      │
-                             ┌────────┴────────┐
-                             │   File Storage   │
-                             │  (Local Media)   │
-                             │  (S3-ready)      │
-                             └──────────────────┘
+                        ┌──────────────────────────┐
+                        │        Frontend          │
+                        │      (React Web App)     │
+                        └──────────────▲───────────┘
+                                       │ HTTPS / REST API
+                                       │
+                        ┌──────────────┴───────────┐
+                        │         Backend          │
+                        │   Django + DRF (API)     │
+                        │                          │
+                        │   Modular ERP Services   │
+                        └──────────────▲───────────┘
+                                       │
+                     ┌─────────────────┴─────────────────┐
+                     │          PostgreSQL DB             │
+                     │   Central Relational Database      │
+                     └─────────────────▲─────────────────┘
+                                       │
+                          ┌────────────┴────────────┐
+                          │      File Storage       │
+                          │   (Local → S3 Ready)    │
+                          └─────────────────────────┘
 ```
 
 ---
 
 # 2. Layered System Structure
 
-ERP-Veritas is divided into four main layers:
+ERP-Veritas follows a layered architecture for clarity and scalability.
 
-### **1. Presentation Layer**
+---
+
+## 2.1 Presentation Layer
 
 * React-based web frontend
-* Communicates only with backend via REST API
+* Communicates only via REST API
 * No direct database access
+* UI handles input validation and user experience
+* Business rules are not enforced here (backend owns logic)
 
-### **2. API Layer (Backend)**
+---
 
-* Django REST Framework
-* Exposes endpoints for all modules
-* Handles authentication & authorization
-* Implements business logic rules
+## 2.2 API Layer (Backend)
 
-### **3. Data Layer**
+* Django REST Framework (DRF)
+* Exposes endpoints per module
+* Handles:
 
-* PostgreSQL stores all structured data
-* Django models → Migrations → Tables
-* ER diagram matches the final ERP schema
-* Strict relational integrity with FK constraints
+  * Authentication
+  * Authorization
+  * Business logic
+  * Cross-module state validation
+* Enforces lifecycle constraints:
 
-### **4. Storage Layer**
+  * Sales → Production
+  * Production → Packing
+  * Packing → Dispatch / Stock
+* Central coordination point of ERP behavior
 
-* Stores files like:
+---
 
-  * Product images
-  * Customer PO uploads
-  * Invoice PDFs
-* Local filesystem during Phase 0–1
-* Replaceable with S3 in future
+## 2.3 Data Layer
+
+* PostgreSQL relational database
+* Django ORM manages:
+
+  * Models
+  * Migrations
+  * Schema evolution
+* ER diagram strictly matches finalized ERP schema
+* Strong relational integrity via foreign keys
+* Derived values (e.g., pending quantities) are computed — not redundantly stored
+
+---
+
+## 2.4 Storage Layer
+
+Handles unstructured files:
+
+* Product images
+* Customer PO uploads
+* Invoice PDFs
+* Supporting documents
+
+Phase-wise strategy:
+
+* Phase 0–1 → Local `/media` folder
+* Future → AWS S3 integration
+* Storage backend abstracted for portability
 
 ---
 
 # 3. Modular Backend Architecture
 
-Each ERP module is a separate Django app:
+Each ERP domain is implemented as an independent Django app.
 
 ```
 backend/
@@ -106,105 +135,174 @@ backend/
 └── reporting/
 ```
 
-### Module Independence
+---
 
-* Each module contains its own models, API endpoints, business rules, and serializers.
-* Modules share data only via foreign keys and SR Number references.
-* This enables:
+## 3.1 Module Independence Principles
 
-  * Easier debugging
-  * Clean separation of concerns
-  * Future microservice migration if needed
+* Each module contains:
+
+  * Models
+  * Serializers
+  * Views / ViewSets
+  * Business logic
+* Modules communicate via:
+
+  * Foreign keys
+  * Controlled state transitions
+* No module directly manipulates another module’s internal logic.
+* Cross-module effects are triggered through validated workflows.
 
 ---
 
-# 4. Deployment Architecture (Current & Future)
+## 3.2 Business Rule Ownership
 
-### **Phase 0–1: Local Development**
+* Each module owns its lifecycle constraints.
+* Example:
 
-* Backend runs on localhost
-* Frontend runs on localhost
-* PostgreSQL installed locally
-* Media stored in local `/media` folder
+  * Sales controls fulfillment logic.
+  * Production controls manufacturing stages.
+  * Dispatch updates fulfillment quantities.
+* State transitions are reference-based, not tightly coupled.
+* Business behavior is designed to become configuration-driven where feasible.
 
-### **Phase 2: LAN/WiFi**
+---
 
-* Backend exposed on a local IP (e.g., `192.168.x.x`)
-* Frontend can be served locally or from backend
-* Teammates connect using the same WiFi network
+# 4. Deployment Architecture
 
-### **Phase 3: Cloud Migration (Not now)**
+---
 
-* Docker containers for backend + frontend
-* AWS ECS/ECR for compute
+## Phase 0–1: Local Development
+
+* Backend: localhost
+* Frontend: localhost
+* PostgreSQL: local installation
+* Media files: local `/media` directory
+* Single-machine development
+
+---
+
+## Phase 2: LAN / WiFi Deployment
+
+* Backend exposed on internal IP (e.g., `192.168.x.x`)
+* PostgreSQL hosted on central system
+* Users connect via internal network
+* Controlled access inside organization
+
+---
+
+## Phase 3: Cloud Migration (Future)
+
+Designed but not currently implemented.
+
+Planned components:
+
+* Docker containers (backend + frontend)
+* AWS ECS / EC2 for compute
 * AWS RDS for PostgreSQL
 * AWS S3 for file storage
-* CloudFront CDN layer for frontend
+* CloudFront CDN for frontend delivery
 * IAM-based secure access
 
-*(This section is documented for future readiness.)*
+Cloud readiness is ensured by abstraction layers and modular architecture.
 
 ---
 
 # 5. Security Architecture
 
-### **Authentication**
+---
 
-* JWT tokens (API)
-* Django sessions (admin panel)
+## 5.1 Authentication
 
-### **Authorization**
+* JWT tokens for API access
+* Django session-based admin access (internal tools)
+* Token validation enforced per request
 
-* Role-based access control (RBAC)
-* Roles: employee, manager, owner, admin
+---
 
-### **Audit Logging**
+## 5.2 Authorization
 
-1. User actions
+Role-Based Access Control (RBAC):
+
+* employee
+* manager
+* owner
+* admin
+
+Access decisions enforced at API level.
+
+---
+
+## 5.3 Audit Logging
+
+System records:
+
+1. User identity
 2. Module affected
 3. Reference ID
 4. Timestamp
+5. Action performed
 
-### **Data Integrity**
-
-* All important fields validated both in frontend and backend
-* Foreign key constraints maintained strictly
-* Status fields use controlled choices/enums
+Ensures operational traceability.
 
 ---
 
-# 6. Future Extensibility
+## 5.4 Data Integrity
 
-### Designed to allow:
-
-* Mobile app integration (same API)
-* Additional modules:
-
-  * Barcode scanning
-  * Raw material usage tracking
-  * Machine monitoring
-* Cloud migration without refactor
-* Multi-company or multi-factory support (future)
+* Backend validation mandatory
+* FK constraints enforced
+* Controlled status enums
+* Locking mechanisms (`is_locked`) prevent invalid state mutation
+* Fulfillment updates only via Dispatch logic
 
 ---
 
-# 7. Summary
+# 6. Extensibility Strategy
 
-ERP-Veritas architecture focuses on:
+ERP-Veritas is structured for controlled expansion.
 
-* Modularity
-* Scalability
+Future capabilities include:
+
+* Mobile application using same REST API
+* Barcode scanning integration
+* Raw material usage tracking
+* Machine monitoring
+* Multi-company support
+* Multi-factory support
+* Finance automation layer
+* Configuration-driven business rules
+
+Schema designed to allow extensions without structural redesign.
+
+---
+
+# 7. Architectural Principles
+
+ERP-Veritas is built on:
+
+* Clear module ownership
+* Strong relational modeling
+* Minimal redundancy
+* Controlled state transitions
+* Layer isolation
+* Future-proof extensibility
+* LAN → Cloud portability
+* Maintainable growth model
+
+---
+
+# 8. Summary
+
+ERP-Veritas architecture ensures:
+
+* Modular development
 * Clean separation of layers
-* Long-term maintainability
-* LAN→Cloud transition readiness
+* Controlled business rule enforcement
+* Reliable data integrity
+* Long-term scalability
+* Gradual upgrade capability
 
-This architecture ensures the ERP remains flexible for years, while still simple enough to maintain and extend.
+The system is designed to grow from a small manufacturing ERP into a scalable operational platform without structural rework.
 
 ---
 
 # ✔ END OF ARCHITECTURE OVERVIEW DOCUMENT
-
----
-
-# 📌 **Documentation Update Reminder**
-

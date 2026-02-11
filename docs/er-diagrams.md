@@ -19,9 +19,12 @@ erDiagram
 
     CUSTOMER {
         int id PK
+        string vendor_id
         string name
-        string billing_address
-        string shipping_address
+        text billing_address
+        string billing_gst_number
+        text shipping_address
+        string shipping_gst_number
         json contact_numbers
         json contact_emails
         string gst_number
@@ -32,7 +35,7 @@ erDiagram
     CUSTOMERPO {
         int id PK
         string po_number
-        int customer FK
+        int customer_id FK
         date po_date
         string uploaded_document_path
         string remarks
@@ -40,53 +43,80 @@ erDiagram
 
     SALESORDER {
         int id PK
-        int customer FK
-        int customer_po FK
-        string sr_number
-        int order_quantity
-        string priority_flag
+        int customer_id FK
+        int customer_po_id FK
+        int created_by FK
         date order_date
         date expected_delivery_date
         string status
+        bool priority_flag
+        bool is_locked
+        decimal subtotal_amount
+        decimal tax_amount
+        decimal total_amount
         string remarks
+        datetime created_at
+        datetime updated_at
+    }
+
+    SALESORDERLINE {
+        int id PK
+        int sales_order_id FK
+        int product_id FK
+        int quantity
+        int fulfilled_quantity
+        decimal unit_price
+        decimal line_total
+        string remarks
+    }
+
+    SALESORDEREDITLOG {
+        int id PK
+        int sales_order_id FK
+        string field_name
+        string old_value
+        string new_value
+        int changed_by FK
+        datetime changed_at
     }
 
     PRODUCTION {
         int id PK
-        int sales_order FK
-        string sr_number
-        string current_stage
+        int sales_order_line_id FK
+        int product_id FK
         string batch_number
+        int planned_quantity
+        int produced_quantity
+        string current_stage
         datetime created_at
-        datetime last_updated
+        datetime updated_at
         string remarks
     }
 
     PACKET {
         int id PK
-        int sales_order FK
-        string sr_number
-        string product_description
+        int production_id FK
+        int product_id FK
+        int sales_order_line_id FK
         int units_in_packet
-        string unit_of_measure
         date manufacture_date
         string batch_number
+        string allocation_type
         string remarks
     }
 
     FINISHEDSTOCKPACKET {
         int id PK
-        int packet FK
-        string sr_number
+        int packet_id FK
+        int product_id FK
         int units_in_packet
-        string unit_of_measure
         date added_to_stock_date
         string status
     }
 
     FINISHEDSTOCKMOVEMENT {
         int id PK
-        string sr_number
+        int product_id FK
         string movement_type
         int quantity
         date date
@@ -96,10 +126,9 @@ erDiagram
 
     DISPATCH {
         int id PK
-        int sales_order FK
-        int customer FK
-        string sr_number
-        int units_dispatched
+        int sales_order_line_id FK
+        int product_id FK
+        int quantity_dispatched
         string awb_number
         string transporter
         date dispatch_date
@@ -109,10 +138,10 @@ erDiagram
     SALESINVOICE {
         int id PK
         string invoice_number
-        int customer FK
+        int customer_id FK
         date invoice_date
         date due_date
-        float total_amount
+        decimal total_amount
         string pdf_path
         string status
         string remarks
@@ -120,20 +149,19 @@ erDiagram
 
     SALESINVOICEITEM {
         int id PK
-        int invoice FK
-        string sr_number
+        int invoice_id FK
+        int product_id FK
         int quantity
-        string unit_of_measure
-        float rate
-        float amount
+        decimal rate
+        decimal amount
         string remarks
     }
 
     PAYMENT {
         int id PK
-        int customer FK
-        int sales_invoice FK
-        float amount_paid
+        int customer_id FK
+        int sales_invoice_id FK
+        decimal amount_paid
         date payment_date
         string payment_mode
         string remarks
@@ -153,26 +181,26 @@ erDiagram
     PURCHASEORDER {
         int id PK
         string po_number
-        int supplier FK
+        int supplier_id FK
         date po_date
         string remarks
     }
 
     PURCHASEINVOICE {
         int id PK
-        int supplier FK
-        int purchase_order FK
+        int supplier_id FK
+        int purchase_order_id FK
         string invoice_number
         date invoice_date
-        float total_amount
+        decimal total_amount
         string pdf_path
         string status
     }
 
     GRN {
         int id PK
-        int purchase_invoice FK
-        string product
+        int purchase_invoice_id FK
+        int product_id FK
         int received_quantity
         int accepted_quantity
         date received_date
@@ -181,7 +209,7 @@ erDiagram
 
     RAWSTOCKMOVEMENT {
         int id PK
-        string product
+        int product_id FK
         string movement_type
         int quantity
         date date
@@ -199,7 +227,7 @@ erDiagram
 
     ACTIVITYLOG {
         int id PK
-        int user FK
+        int user_id FK
         string action
         string module
         string reference_id
@@ -207,17 +235,24 @@ erDiagram
         string remarks
     }
 
+    CUSTOMER ||--o{ CUSTOMERPO : places
+    CUSTOMER ||--o{ SALESORDER : creates
+    CUSTOMER ||--o{ SALESINVOICE : billed_in
+    CUSTOMER ||--o{ PAYMENT : makes
 
-    CUSTOMER ||--o{ CUSTOMERPO : "places"
-    CUSTOMER ||--o{ SALESORDER : "creates"
-    CUSTOMER ||--o{ SALESINVOICE : "billed in"
-    CUSTOMER ||--o{ PAYMENT : "makes"
-    SALESORDER ||--o{ PRODUCTION : "goes to"
-    SALESORDER ||--o{ PACKET : "produces"
-    PACKET ||--o{ FINISHEDSTOCKPACKET : "added"
-    SALESINVOICE ||--o{ SALESINVOICEITEM : "contains"
-    SUPPLIER ||--o{ PURCHASEORDER : "receives"
-    PURCHASEORDER ||--o{ PURCHASEINVOICE : "linked"
-    PURCHASEINVOICE ||--o{ GRN : "results in"
-    USER ||--o{ ACTIVITYLOG : "performs"
+    SALESORDER ||--o{ SALESORDERLINE : contains
+    SALESORDER ||--o{ SALESORDEREDITLOG : logs
+
+    SALESORDERLINE ||--o{ PRODUCTION : triggers
+    PRODUCTION ||--o{ PACKET : produces
+
+    PACKET ||--o{ FINISHEDSTOCKPACKET : added_to_stock
+
+    SALESORDERLINE ||--o{ DISPATCH : fulfilled_by
+
+    SALESINVOICE ||--o{ SALESINVOICEITEM : contains
+
+    SUPPLIER ||--o{ PURCHASEORDER : receives
+    PURCHASEORDER ||--o{ PURCHASEINVOICE : linked
+    PURCHASEINVOICE ||--o{ GRN : results_in
 ```
