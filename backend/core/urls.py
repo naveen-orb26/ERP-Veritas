@@ -16,9 +16,19 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+
+from production.views import ProductionViewSet
+
+router = DefaultRouter()
+router.register(r'production', ProductionViewSet, basename='production')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("api/", include("sales.urls")),
 
+    # existing sales app routes
+    path('api/', include('sales.urls')),
+
+    # production routes
+    path('api/', include(router.urls)),
 ]
