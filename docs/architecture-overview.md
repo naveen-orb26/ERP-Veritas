@@ -78,7 +78,8 @@ ERP-Veritas follows a layered architecture for clarity and scalability.
 * Enforces lifecycle constraints:
 
   * Sales → Production
-  * Production → Packing
+  * Production → Inspection
+  * Inspection → Packing
   * Packing → Dispatch / Stock
 * Central coordination point of ERP behavior
 
@@ -95,6 +96,9 @@ ERP-Veritas follows a layered architecture for clarity and scalability.
 * ER diagram strictly matches finalized ERP schema
 * Strong relational integrity via foreign keys
 * Derived values (e.g., pending quantities) are computed — not redundantly stored
+• Inspection quantities must not exceed Production output
+• Packing quantities must match Inspection accepted quantities
+• Sales fulfillment derives strictly from Dispatch
 
 ---
 
@@ -164,7 +168,9 @@ backend/
   * Dispatch updates fulfillment quantities.
 * State transitions are reference-based, not tightly coupled.
 * Business behavior is designed to become configuration-driven where feasible.
-
+• Inspection module owns QC validation and rejection tracking
+• Packing module handles packetization and allocation
+• Only Dispatch module updates sales fulfillment
 ---
 
 # 4. Deployment Architecture

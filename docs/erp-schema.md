@@ -11,22 +11,19 @@
 Defines core product identity (SR Number) and basic characteristics.
 
 ### **Table: Product**
+| Field                           | Description         |
+| ------------------------------- | ------------------- |
+| id (PK)                         | Auto ID             |
+| sales_order_line (FK, nullable) | Demand reference    |
+| product (FK)                    | Product             |
+| batch_number                    | Unique batch code   |
+| planned_quantity                | Intended production |
+| production_date                 | Date                |
+| created_by (FK)                 | Operator            |
+| remarks                         | Notes               |
+| created_at                      | Timestamp           |
+| updated_at                      | Timestamp           |
 
-| Field                    | Description                         |
-| ------------------------ | ----------------------------------- |
-| id (PK)                  | Auto ID                             |
-| sr_number (unique)       | Universal product identity          |
-| product_name             | Name of product                     |
-| category                 | button / elastic / tape / accessory |
-| size_or_variant          | e.g., 16L, 24L                      |
-| color                    | Product color                       |
-| base_unit                | GROSS / PCS / METER / ROLL / SET    |
-| units_per_base_unit      | e.g., 144 for GROSS                 |
-| default_units_per_packet | Default packaging quantity          |
-| description              | Text                                |
-| image_path               | Product image                       |
-| is_active                | Active/inactive flag                |
-| created_at               | Timestamp                           |
 
 ### **Notes**
 
@@ -163,18 +160,22 @@ Defines core product identity (SR Number) and basic characteristics.
 
 ### **Table: Production**
 
-| Field                 | Description                                           |
-| --------------------- | ----------------------------------------------------- |
-| id (PK)               | Auto ID                                               |
-| sales_order_line (FK) | Linked SalesOrderLine (product-level demand)          |
-| product (FK)          | Product reference                                     |
-| batch_number          | Generated batch code                                  |
-| planned_quantity      | Planned production quantity                           |
-| produced_quantity     | Actual produced quantity                              |
-| current_stage         | Draft / Planned / In Progress / Completed / Cancelled |
-| created_at            | Timestamp                                             |
-| updated_at            | Timestamp                                             |
-| remarks               | Notes                                                 |
+| Field                         | Description                                           |
+| ---------------------         | ----------------------------------------------------- |
+| id (PK)                       | Auto ID                                               |
+| sales_order_line (FK,nullable)| Linked SalesOrderLine (product-level demand)          |
+| product (FK)                  | Product reference                                     |
+| batch_number                  | Generated batch code                                  |
+| planned_quantity              | Planned production quantity                           |
+| produced_quantity             | Actual produced quantity                              |
+| current_stage                 | Draft / Planned / In Progress / Completed / Cancelled |
+| created_at                    | Timestamp                                             |
+| updated_at                    | Timestamp                                             |
+| remarks                       | Notes                                                 |
+| created_by (FK User)          | Audit ownership                                       |
+| production_date               | Explicit manufacturing date                           |
+| is_closed (Boolean)           | Optional future locking                               | 
+
 
 ### **Notes**
 
@@ -186,24 +187,50 @@ Defines core product identity (SR Number) and basic characteristics.
 
 # 5. PACKING MODULE
 
-### **Table: Packet**
+### **Table: Inspection**
 
-| Field                           | Description                         |
-| ------------------------------- | ----------------------------------- |
-| id (PK)                         | Internal packet ID                  |
-| production (FK)                 | Linked production batch             |
-| product (FK)                    | Product reference                   |
-| units_in_packet                 | Quantity inside packet              |
-| manufacture_date                | Date                                |
-| batch_number                    | From production                     |
-| allocation_type                 | ORDER / STOCK                       |
-| sales_order_line (FK, nullable) | If allocated to specific order line |
-| remarks                         | Notes                               |
+| Field              | Description             |
+| ------------------ | ----------------------- |
+| id (PK)            | Auto ID                 |
+| production (FK)    | Linked production batch |
+| inspected_quantity | Total quantity checked  |
+| rejected_quantity  | QC rejected quantity    |
+| accepted_quantity  | Passed QC               |
+| inspection_date    | Date                    |
+| remarks            | Notes                   |
+| created_at         | Timestamp               |
 
 ### **Notes**
 
-* Packets are atomic (no split/merge).
-* Allocation determines whether packet fulfills an order or goes to stock.
+• One Production may have multiple Inspections
+• Inspection records represent QC lots
+• Packing is allowed only for accepted quantity
+• accepted_quantity = inspected_quantity − rejected_quantity
+• Sum of inspected quantities must not exceed produced_quantity
+
+
+### **Table: Packet**
+
+| Field                           | Description                    |
+| ------------------------------- | ------------------------------ |
+| id (PK)                         | Internal packet ID             |
+| inspection (FK)                 | Linked inspection lot          |
+| production (FK)                 | Linked production batch        |
+| product (FK)                    | Product reference              |
+| units_in_packet                 | Quantity inside packet         |
+| manufacture_date                | Date                           |
+| batch_number                    | From production                |
+| allocation_type                 | ORDER / STOCK                  |
+| sales_order_line (FK, nullable) | If allocated to specific order |
+| remarks                         | Notes                          |
+
+
+### **Notes**
+
+• Packets are created only from Inspection accepted quantity
+• accepted_quantity must equal total units across packets created
+• Packets are atomic (no split/merge)
+• Allocation determines whether packet fulfills order or moves to stock
 
 ---
 
@@ -223,6 +250,10 @@ Defines core product identity (SR Number) and basic characteristics.
 | status              | IN_STOCK / CONSUMED |
 
 ---
+### **Notes**
+
+• Only packets with allocation_type = STOCK generate FinishedStockPacket entries
+• Dispatch reduces FinishedStockPacket via FinishedStockMovement
 
 ## 6.2 Stock Movement
 
@@ -258,6 +289,8 @@ Defines core product identity (SR Number) and basic characteristics.
 
 * Dispatch updates `fulfilled_quantity` in SalesOrderLine.
 * No packet-level listing for operational simplicity.
+• Dispatch updates SalesOrderLine.fulfilled_quantity
+• Fulfillment is based only on Dispatch, not Production or Packing
 
 ---
 
