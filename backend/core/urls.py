@@ -17,18 +17,31 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-
+from packing.views import InspectionViewSet, PacketViewSet, PackingEntryView
 from production.views import ProductionViewSet
+from finished_stock.views import (
+    FinishedStockPacketViewSet,
+    FinishedStockMovementViewSet,
+)
+from dispatch.views import DispatchViewSet
 
 router = DefaultRouter()
+
 router.register(r'production', ProductionViewSet, basename='production')
+
+router.register(r"inspections", InspectionViewSet, basename="inspection")
+router.register(r"packets", PacketViewSet, basename="packet")
+
+router.register(r"stock", FinishedStockPacketViewSet, basename="stock")
+router.register(r"stock-movements", FinishedStockMovementViewSet, basename="stock-movement")
+
+router.register(r"dispatch", DispatchViewSet, basename="dispatch")
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
-    # existing sales app routes
-    path('api/', include('sales.urls')),
-
     # production routes
     path('api/', include(router.urls)),
+    path("api/packing-entry/", PackingEntryView.as_view()),
+   
 ]
