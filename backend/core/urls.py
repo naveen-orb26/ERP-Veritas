@@ -25,6 +25,9 @@ from finished_stock.views import (
 )
 from dispatch.views import DispatchViewSet
 
+from invoicing.views import SalesInvoiceViewSet
+from invoicing.views import PaymentViewSet
+
 router = DefaultRouter()
 
 router.register(r'production', ProductionViewSet, basename='production')
@@ -37,6 +40,8 @@ router.register(r"stock-movements", FinishedStockMovementViewSet, basename="stoc
 
 router.register(r"dispatch", DispatchViewSet, basename="dispatch")
 
+router.register(r"invoices", SalesInvoiceViewSet, basename="invoice")
+router.register(r"payments", PaymentViewSet, basename="payment")
 
 urlpatterns = [
     path('admin/', admin.site.urls),

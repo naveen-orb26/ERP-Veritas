@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'production',
     "finished_stock",
     "dispatch",
+    "invoicing",
 
 ]
 AUTH_USER_MODEL = "users.User"
