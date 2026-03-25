@@ -28,6 +28,12 @@ from dispatch.views import DispatchViewSet
 from invoicing.views import SalesInvoiceViewSet
 from invoicing.views import PaymentViewSet
 
+from purchases.views import SupplierViewSet
+from purchases.views import PurchaseOrderViewSet
+from purchases.views import PurchaseInvoiceViewSet
+from purchases.views import GRNViewSet
+from purchases.views import RawStockMovementViewSet
+
 router = DefaultRouter()
 
 router.register(r'production', ProductionViewSet, basename='production')
@@ -42,6 +48,13 @@ router.register(r"dispatch", DispatchViewSet, basename="dispatch")
 
 router.register(r"invoices", SalesInvoiceViewSet, basename="invoice")
 router.register(r"payments", PaymentViewSet, basename="payment")
+
+router.register(r"suppliers", SupplierViewSet, basename="supplier")
+router.register(r"purchase-orders", PurchaseOrderViewSet, basename="purchase-order")
+router.register(r"purchase-invoices", PurchaseInvoiceViewSet, basename="purchase-invoice")
+router.register(r"grn", GRNViewSet, basename="grn")
+router.register(r"raw-stock", RawStockMovementViewSet, basename="raw-stock-movement")
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
