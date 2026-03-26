@@ -34,6 +34,20 @@ from purchases.views import PurchaseInvoiceViewSet
 from purchases.views import GRNViewSet
 from purchases.views import RawStockMovementViewSet
 
+from reporting.views import (
+    RawMaterialStockSummaryView,
+    FinishedGoodsStockSummaryView,
+    DispatchSummaryView,
+    SalesOrderProgressView,
+    OutstandingPaymentsView,
+    PurchaseSummaryView,
+
+    LowStockAlertView,
+    OrderDelayReportView,
+    AgingInventoryView,
+    ProductionDispatchBalanceView,
+    DailyProductionReportView,
+)
 router = DefaultRouter()
 
 router.register(r'production', ProductionViewSet, basename='production')
@@ -56,10 +70,22 @@ router.register(r"grn", GRNViewSet, basename="grn")
 router.register(r"raw-stock", RawStockMovementViewSet, basename="raw-stock-movement")
 
 
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     # production routes
     path('api/', include(router.urls)),
     path("api/packing-entry/", PackingEntryView.as_view()),
-   
+    path( "api/reports/raw-material-stock/", RawMaterialStockSummaryView.as_view(),),
+    path("api/reports/finished-goods-stock/", FinishedGoodsStockSummaryView.as_view(),),
+    path("api/reports/dispatch-summary/", DispatchSummaryView.as_view(),),
+    path("api/reports/sales-order-progress/", SalesOrderProgressView.as_view(),),
+    path("api/reports/outstanding-payments/", OutstandingPaymentsView.as_view(),),
+    path("api/reports/purchase-summary/", PurchaseSummaryView.as_view(),),
+    path("api/reports/low-stock/", LowStockAlertView.as_view()),
+    path("api/reports/order-delay/", OrderDelayReportView.as_view()),
+    path("api/reports/aging-inventory/", AgingInventoryView.as_view()),
+    path("api/reports/production-dispatch/", ProductionDispatchBalanceView.as_view()),
+    path("api/reports/daily-production/", DailyProductionReportView.as_view()),
 ]

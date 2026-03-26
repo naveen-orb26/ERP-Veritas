@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     "dispatch",
     "invoicing",
     "purchases",
-
+    "reporting",
+    
 ]
 AUTH_USER_MODEL = "users.User"
 

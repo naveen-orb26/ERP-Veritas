@@ -32,6 +32,9 @@ class Product(models.Model):
         max_length=50,
         help_text="Color of the product"
     )
+    reorder_level = models.PositiveIntegerField(
+    default=0
+    )
     BASE_UNIT_CHOICES = [
         ("PCS", "Pieces"),
         ("GROSS", "Gross"),
