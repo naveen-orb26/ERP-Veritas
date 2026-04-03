@@ -24,6 +24,7 @@ from finished_stock.views import (
     FinishedStockMovementViewSet,
 )
 from dispatch.views import DispatchViewSet
+from sales.views import SalesOrderViewSet
 
 from invoicing.views import SalesInvoiceViewSet
 from invoicing.views import PaymentViewSet
@@ -59,6 +60,7 @@ router.register(r"stock", FinishedStockPacketViewSet, basename="stock")
 router.register(r"stock-movements", FinishedStockMovementViewSet, basename="stock-movement")
 
 router.register(r"dispatch", DispatchViewSet, basename="dispatch")
+router.register(r"sales-orders", SalesOrderViewSet, basename="sales-order")
 
 router.register(r"invoices", SalesInvoiceViewSet, basename="invoice")
 router.register(r"payments", PaymentViewSet, basename="payment")

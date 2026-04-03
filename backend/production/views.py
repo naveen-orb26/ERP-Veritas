@@ -1,15 +1,26 @@
-from django.shortcuts import render
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from activity_log.utils import log_activity
 
 from .models import Production
 from .serializers import ProductionSerializer
 
 
 class ProductionViewSet(viewsets.ModelViewSet):
+
     queryset = Production.objects.all().order_by("-id")
+
     serializer_class = ProductionSerializer
-    permission_classes = [IsAuthenticated]
+
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+
+        production = serializer.save()
+
+        log_activity(
+            user=self.request.user,
+            action="CREATE",
+            module="Production",
+            reference_id=production.id,
+            description="Production batch created",
+            ip_address=self.request.META.get("REMOTE_ADDR"),
+        )

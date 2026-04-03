@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     "invoicing",
     "purchases",
     "reporting",
-    
+    "activity_log",
 ]
 AUTH_USER_MODEL = "users.User"
 

@@ -2,9 +2,12 @@ from django.db import transaction
 
 from rest_framework import viewsets
 
+from activity_log.utils import log_activity
+
 from .models import Dispatch
 from .serializers import DispatchSerializer
 from finished_stock.models import FinishedStockPacket
+
 
 class DispatchViewSet(viewsets.ModelViewSet):
 
@@ -55,4 +58,22 @@ class DispatchViewSet(viewsets.ModelViewSet):
                     remaining -= packet_units
 
             if remaining > 0:
-                raise Exception("Not enough stock packets available for dispatch.")
+                raise Exception(
+                    "Not enough stock packets available for dispatch."
+                )
+
+            # -----------------------------
+            # ACTIVITY LOG
+            # -----------------------------
+
+            log_activity(
+                user=self.request.user,
+                action="CREATE",
+                module="Dispatch",
+                reference_id=dispatch.id,
+                description=(
+                    f"Dispatched {qty} units for "
+                    f"SalesOrderLine {sales_line.id}"
+                ),
+                ip_address=self.request.META.get("REMOTE_ADDR"),
+            )

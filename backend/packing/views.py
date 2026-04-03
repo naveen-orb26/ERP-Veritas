@@ -4,6 +4,8 @@ from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from activity_log.utils import log_activity
+
 from .models import Inspection, Packet
 from .serializers import (
     InspectionSerializer,
@@ -29,7 +31,10 @@ class PackingEntryView(APIView):
         serializer = PackingEntrySerializer(data=request.data)
 
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         data = serializer.validated_data
 
@@ -68,6 +73,22 @@ class PackingEntryView(APIView):
                 )
 
                 packet_ids.append(packet.id)
+
+        # -----------------------------
+        # ACTIVITY LOG — ADD HERE
+        # -----------------------------
+
+        log_activity(
+            user=request.user,
+            action="CREATE",
+            module="InspectionPacking",
+            reference_id=inspection.id,
+            description=(
+                f"Inspection completed and {packets} packets created "
+                f"from production batch {production.batch_number}"
+            ),
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
 
         return Response(
             {

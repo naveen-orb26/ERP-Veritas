@@ -2,9 +2,22 @@ from rest_framework import serializers
 from .models import SalesOrder, SalesOrderLine
 
 
+# =========================================================
+# READ SERIALIZER — SalesOrderLine
+# Used when returning data to client
+# =========================================================
+
 class SalesOrderLineSerializer(serializers.ModelSerializer):
+
+    sr_number = serializers.CharField(
+        source="product.sr_number",
+        read_only=True
+    )
+
     class Meta:
+
         model = SalesOrderLine
+
         fields = [
             "id",
             "product",
@@ -15,12 +28,47 @@ class SalesOrderLineSerializer(serializers.ModelSerializer):
             "remarks",
         ]
 
+        read_only_fields = [
+            "id",
+            "sr_number",
+            "line_total",
+        ]
 
-class SalesOrderSerializer(serializers.ModelSerializer):
-    lines = SalesOrderLineSerializer(many=True, read_only=True)
+
+# =========================================================
+# WRITE SERIALIZER — SalesOrderLine
+# Used for create/update operations
+# =========================================================
+
+class SalesOrderLineCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
+
+        model = SalesOrderLine
+
+        fields = [
+            "product",
+            "quantity",
+            "unit_price",
+            "remarks",
+        ]
+
+
+# =========================================================
+# READ SERIALIZER — SalesOrder
+# =========================================================
+
+class SalesOrderSerializer(serializers.ModelSerializer):
+
+    lines = SalesOrderLineSerializer(
+        many=True,
+        read_only=True
+    )
+
+    class Meta:
+
         model = SalesOrder
+
         fields = [
             "id",
             "customer",
@@ -39,11 +87,18 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         ]
 
 
+# =========================================================
+# WRITE SERIALIZER — SalesOrder
+# =========================================================
+
 class SalesOrderCreateUpdateSerializer(serializers.ModelSerializer):
-    lines = SalesOrderLineSerializer(many=True)
+
+    lines = SalesOrderLineCreateUpdateSerializer(many=True)
 
     class Meta:
+
         model = SalesOrder
+
         fields = [
             "customer",
             "customer_po_id",
@@ -58,29 +113,49 @@ class SalesOrderCreateUpdateSerializer(serializers.ModelSerializer):
             "lines",
         ]
 
+    # -----------------------------------------------------
+    # CREATE
+    # -----------------------------------------------------
+
     def create(self, validated_data):
+
         lines_data = validated_data.pop("lines")
+
         order = SalesOrder.objects.create(**validated_data)
 
         for line in lines_data:
+
             SalesOrderLine.objects.create(
                 sales_order=order,
                 **line
             )
+
         return order
 
+    # -----------------------------------------------------
+    # UPDATE
+    # -----------------------------------------------------
+
     def update(self, instance, validated_data):
+
         lines_data = validated_data.pop("lines", None)
 
+        # Update order fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
         instance.save()
 
+        # Replace lines if provided
         if lines_data is not None:
+
             instance.lines.all().delete()
+
             for line in lines_data:
+
                 SalesOrderLine.objects.create(
                     sales_order=instance,
                     **line
                 )
+
         return instance
