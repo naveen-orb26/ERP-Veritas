@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from activity_log.utils import log_activity
+from core.permissions import IsEmployee
 
 from .models import Inspection, Packet
 from .serializers import (
@@ -15,17 +16,19 @@ from .serializers import (
 
 
 class InspectionViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsEmployee]
     queryset = Inspection.objects.all().order_by("-id")
     serializer_class = InspectionSerializer
 
 
 class PacketViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsEmployee]
     queryset = Packet.objects.all().order_by("-id")
     serializer_class = PacketSerializer
 
 
 class PackingEntryView(APIView):
-
+    permission_classes = [IsEmployee]
     def post(self, request):
 
         serializer = PackingEntrySerializer(data=request.data)

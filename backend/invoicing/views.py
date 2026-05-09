@@ -1,8 +1,11 @@
 from django.shortcuts import render
+from django.db import transaction
 
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
 
 from activity_log.utils import log_activity
+from core.permissions import ManagerOrAbove
 
 from .models import SalesInvoice
 from .serializers import (
@@ -12,6 +15,8 @@ from .serializers import (
 
 from .models import Payment
 from .serializers import PaymentSerializer
+
+from .services import validate_payment
 
 
 # =====================================================
@@ -39,19 +44,21 @@ class SalesInvoiceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
 
-        invoice = serializer.save()
+        with transaction.atomic():
 
-        log_activity(
-            user=self.request.user,
-            action="CREATE",
-            module="SalesInvoice",
-            reference_id=invoice.id,
-            description=(
-                f"Invoice created for SalesOrder "
-                f"{invoice.sales_order.id}"
-            ),
-            ip_address=self.request.META.get("REMOTE_ADDR"),
-        )
+            invoice = serializer.save()
+
+            log_activity(
+                user=self.request.user,
+                action="CREATE",
+                module="SalesInvoice",
+                reference_id=invoice.id,
+                description=(
+                    f"Invoice created for SalesOrder "
+                    f"{invoice.sales_order.id}"
+                ),
+                ip_address=self.request.META.get("REMOTE_ADDR"),
+            )
 
 
 # =====================================================
@@ -60,8 +67,12 @@ class SalesInvoiceViewSet(viewsets.ModelViewSet):
 
 class PaymentViewSet(viewsets.ModelViewSet):
 
+    permission_classes = [ManagerOrAbove]
+
     queryset = Payment.objects.all().order_by("-id")
+
     serializer_class = PaymentSerializer
+
 
     # -----------------------------
     # PAYMENT CREATE
@@ -69,23 +80,48 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
 
-        payment = serializer.save()
+        with transaction.atomic():
 
-        invoice = payment.sales_invoice
+            invoice = serializer.validated_data.get(
+                "sales_invoice"
+            )
 
-        invoice.update_payment_status()
+            amount = serializer.validated_data.get(
+                "amount_paid"
+            )
 
-        log_activity(
-            user=self.request.user,
-            action="CREATE",
-            module="Payment",
-            reference_id=payment.id,
-            description=(
-                f"Payment recorded for Invoice "
-                f"{invoice.id}"
-            ),
-            ip_address=self.request.META.get("REMOTE_ADDR"),
-        )
+            payment_date = serializer.validated_data.get(
+                "payment_date"
+            )
+
+            # -----------------------------
+            # VALIDATION
+            # -----------------------------
+
+            validate_payment(
+                invoice=invoice,
+                payment_amount=amount,
+                payment_date=payment_date,
+            )
+
+            payment = serializer.save()
+
+            invoice.update_payment_status()
+
+            log_activity(
+                user=self.request.user,
+                action="CREATE",
+                module="Payment",
+                reference_id=payment.id,
+                description=(
+                    f"Payment of {amount} recorded "
+                    f"for Invoice {invoice.id}"
+                ),
+                ip_address=self.request.META.get(
+                    "REMOTE_ADDR"
+                ),
+            )
+
 
     # -----------------------------
     # PAYMENT UPDATE
@@ -93,23 +129,46 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
 
-        payment = serializer.save()
+        with transaction.atomic():
 
-        invoice = payment.sales_invoice
+            payment = self.get_object()
 
-        invoice.update_payment_status()
+            invoice = payment.sales_invoice
 
-        log_activity(
-            user=self.request.user,
-            action="UPDATE",
-            module="Payment",
-            reference_id=payment.id,
-            description=(
-                f"Payment updated for Invoice "
-                f"{invoice.id}"
-            ),
-            ip_address=self.request.META.get("REMOTE_ADDR"),
-        )
+            new_amount = serializer.validated_data.get(
+                "amount_paid",
+                payment.amount_paid
+            )
+
+            payment_date = serializer.validated_data.get(
+                "payment_date",
+                payment.payment_date
+            )
+
+            validate_payment(
+                invoice=invoice,
+                payment_amount=new_amount,
+                payment_date=payment_date,
+            )
+
+            payment = serializer.save()
+
+            invoice.update_payment_status()
+
+            log_activity(
+                user=self.request.user,
+                action="UPDATE",
+                module="Payment",
+                reference_id=payment.id,
+                description=(
+                    f"Payment updated for "
+                    f"Invoice {invoice.id}"
+                ),
+                ip_address=self.request.META.get(
+                    "REMOTE_ADDR"
+                ),
+            )
+
 
     # -----------------------------
     # PAYMENT DELETE
@@ -117,22 +176,26 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
 
-        invoice = instance.sales_invoice
+        with transaction.atomic():
 
-        payment_id = instance.id
+            invoice = instance.sales_invoice
 
-        instance.delete()
+            payment_id = instance.id
 
-        invoice.update_payment_status()
+            instance.delete()
 
-        log_activity(
-            user=self.request.user,
-            action="DELETE",
-            module="Payment",
-            reference_id=payment_id,
-            description=(
-                f"Payment deleted for Invoice "
-                f"{invoice.id}"
-            ),
-            ip_address=self.request.META.get("REMOTE_ADDR"),
-        )
+            invoice.update_payment_status()
+
+            log_activity(
+                user=self.request.user,
+                action="DELETE",
+                module="Payment",
+                reference_id=payment_id,
+                description=(
+                    f"Payment deleted for "
+                    f"Invoice {invoice.id}"
+                ),
+                ip_address=self.request.META.get(
+                    "REMOTE_ADDR"
+                ),
+            )

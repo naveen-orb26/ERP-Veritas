@@ -5,6 +5,8 @@ from rest_framework.response import Response
 
 from purchases.models import RawStockMovement
 
+from core.permissions import FinancialAccess
+
 
 class RawMaterialStockSummaryView(APIView):
 
@@ -170,7 +172,7 @@ from invoicing.models import SalesInvoice
 
 
 class OutstandingPaymentsView(APIView):
-
+    permission_classes = [FinancialAccess]
     def get(self, request):
 
         invoices = SalesInvoice.objects.all()
@@ -204,7 +206,7 @@ from purchases.models import PurchaseInvoice
 
 
 class PurchaseSummaryView(APIView):
-
+    permission_classes = [FinancialAccess]
     def get(self, request):
 
         summary = (
