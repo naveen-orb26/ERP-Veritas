@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+:root {
+  --background: 220 20% 6%;
+  --foreground: 210 20% 96%;
+
+  --card: 222 18% 10%;
+  --card-foreground: 210 20% 96%;
+
+  --popover: 222 18% 10%;
+  --popover-foreground: 210 20% 96%;
+
+  /* VERITAS BRAND ACCENT */
+
+  --primary: 95 88% 52%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 220 14% 16%;
+  --secondary-foreground: 210 20% 96%;
+
+  --muted: 220 14% 14%;
+  --muted-foreground: 215 16% 70%;
+
+  --accent: 95 88% 52%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 220 14% 18%;
+  --input: 220 14% 18%;
+
+  --ring: 95 88% 52%;
+
+  --radius: 1rem;
+}
+
+.dark {
+  --background: 220 20% 6%;
+  --foreground: 210 20% 96%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(132, 255, 0, 0.10),
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(132, 255, 0, 0.05),
+      transparent 28%
+    ),
+    hsl(var(--background));
+
+  color: hsl(var(--foreground));
+
+  min-height: 100vh;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  overflow-x: hidden;
+
+  text-rendering: optimizeLegibility;
+
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Smooth Text Selection */
+
+::selection {
+  background: rgba(132, 255, 0, 0.35);
+  color: white;
+}
+
+/* Premium Scrollbar */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(220 18% 8%);
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(220 14% 24%);
+  border-radius: 999px;
+
+  border: 2px solid transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 14% 34%);
+}
+
+/* Ambient Glow Utility */
+
+.veritas-glow {
+  box-shadow:
+    0 0 30px rgba(132, 255, 0, 0.18),
+    0 0 60px rgba(132, 255, 0, 0.08);
+}
+
+/* Glass Surface Utility */
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.04);
+
+  backdrop-filter: blur(18px);
+
+  -webkit-backdrop-filter: blur(18px);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}

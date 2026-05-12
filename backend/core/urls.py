@@ -49,6 +49,9 @@ from reporting.views import (
     ProductionDispatchBalanceView,
     DailyProductionReportView,
 )
+
+from django.urls import path, include
+
 router = DefaultRouter()
 
 router.register(r'production', ProductionViewSet, basename='production')
@@ -90,4 +93,6 @@ urlpatterns = [
     path("api/reports/aging-inventory/", AgingInventoryView.as_view()),
     path("api/reports/production-dispatch/", ProductionDispatchBalanceView.as_view()),
     path("api/reports/daily-production/", DailyProductionReportView.as_view()),
+    path("api/dashboard/", include("dashboard.urls"),),
+    path("api/auth/",include("authentication.urls"),),
 ]

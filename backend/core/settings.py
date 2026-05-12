@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,13 +28,22 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+CORS_ALLOW_CREDENTIALS = True
 # Restrict unauthorized access to the API   
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ]
-}
 
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+
+        "authentication.authentication.CookieJWTAuthentication",
+
+    ),
+
+    "DEFAULT_PERMISSION_CLASSES": (
+
+        "rest_framework.permissions.IsAuthenticated",
+
+    ),
+}
 # Application definition
 
 INSTALLED_APPS = [
@@ -57,12 +67,17 @@ INSTALLED_APPS = [
     "purchases",
     "reporting",
     "activity_log",
+    "dashboard",
+    "corsheaders",
+    "rest_framework_simplejwt.token_blacklist",
+    "authentication",
 ]
 AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -119,7 +134,40 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
+SIMPLE_JWT = {
 
+    # =====================================================
+    # ACCESS TOKEN
+    # =====================================================
+
+    "ACCESS_TOKEN_LIFETIME":
+        timedelta(minutes=15),
+
+    # =====================================================
+    # REFRESH TOKEN
+    # =====================================================
+
+    "REFRESH_TOKEN_LIFETIME":
+        timedelta(days=7),
+
+    # =====================================================
+    # SECURITY
+    # =====================================================
+
+    "ROTATE_REFRESH_TOKENS": True,
+
+    "BLACKLIST_AFTER_ROTATION": True,
+
+    # =====================================================
+    # AUTH HEADER
+    # =====================================================
+
+    "AUTH_HEADER_TYPES": ("Bearer",),
+
+}
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
