@@ -1,8 +1,6 @@
 from django.shortcuts import render
 
-from rest_framework.viewsets import (
-    ReadOnlyModelViewSet
-)
+from rest_framework import viewsets
 
 from rest_framework.permissions import (
     IsAuthenticated
@@ -10,17 +8,15 @@ from rest_framework.permissions import (
 
 from .models import Product
 from .serializers import (
-    ProductListSerializer
+    ProductListSerializer,
+    ProductDetailSerializer,
+    ProductCreateUpdateSerializer
 )
 
 
 class ProductViewSet(
-    ReadOnlyModelViewSet
+    viewsets.ModelViewSet
 ):
-
-    serializer_class = (
-        ProductListSerializer
-    )
 
     permission_classes = [
         IsAuthenticated
@@ -28,6 +24,18 @@ class ProductViewSet(
 
     queryset = (
         Product.objects
-        .filter(is_active=True)
+        .all()
         .order_by("product_name")
     )
+
+    def get_serializer_class(self):
+
+        if self.action == "list":
+
+            return ProductListSerializer
+
+        if self.action == "retrieve":
+
+            return ProductDetailSerializer
+
+        return ProductCreateUpdateSerializer

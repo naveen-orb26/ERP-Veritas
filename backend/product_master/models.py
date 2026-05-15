@@ -1,5 +1,5 @@
 from django.db import models
-
+import os
 
 class Product(models.Model):
     """
@@ -16,6 +16,11 @@ class Product(models.Model):
     product_name = models.CharField(
         max_length=255,
         help_text="Human readable product name"
+    )
+
+    description = models.TextField(
+        blank=True,
+        help_text="Detailed product description"
     )
 
     category = models.CharField(
@@ -62,9 +67,20 @@ class Product(models.Model):
         default=True,
         help_text="Whether this product is currently active or discontinued"
     )
+    
+    def product_image_upload_path( instance, filename):
+            
+        extension = filename.split(".")[-1]
+
+        return (
+            f"products/"
+            f"{instance.sr_number}."
+            f"{extension}"
+        )
+    
 
     image = models.ImageField(
-        upload_to="products/",
+        upload_to=product_image_upload_path,
         null=True,
         blank=True,
         help_text="Product image (stored in media storage)"
@@ -90,3 +106,5 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.sr_number} - {self.product_name}"
+
+    

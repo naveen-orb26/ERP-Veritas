@@ -52,6 +52,11 @@ from reporting.views import (
 
 from django.urls import path, include
 
+from django.conf import settings
+
+from django.conf.urls.static import static
+
+
 router = DefaultRouter()
 
 router.register(r'production', ProductionViewSet, basename='production')
@@ -98,3 +103,8 @@ urlpatterns = [
     path("api/", include("customers.urls"),),
     path("api/", include("product_master.urls"),),
 ]
+
+urlpatterns += static(
+    settings.MEDIA_URL,
+    document_root=settings.MEDIA_ROOT
+)
