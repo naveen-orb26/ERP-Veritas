@@ -1,20 +1,117 @@
+from decimal import Decimal
+
+from django.db import transaction
+
 from rest_framework import serializers
+
+from customers.models import Customer
+
+from product_master.models import Product
+
+from core.services.company import (
+    get_company_state
+)
 
 from .models import (
     SalesOrder,
     SalesOrderLine,
+    SalesOrderEditLog,
 )
 
 
-# =========================================================
-# READ SERIALIZER — SalesOrderLine
-# Used when returning data to client
-# =========================================================
+# =====================================================
+# GST HELPERS
+# =====================================================
 
-class SalesOrderLineSerializer(serializers.ModelSerializer):
+def calculate_gst_breakup(
 
-    sr_number = serializers.CharField(
-        source="product.sr_number",
+    *,
+    customer_state,
+    gst_percentage,
+    line_total,
+):
+
+    company_state = (
+        get_company_state()
+    )
+
+    gst_percentage = Decimal(
+        gst_percentage
+    )
+
+    line_total = Decimal(
+        line_total
+    )
+
+    total_tax = (
+
+        line_total
+        *
+        gst_percentage
+
+    ) / Decimal("100")
+
+    cgst_amount = Decimal("0")
+
+    sgst_amount = Decimal("0")
+
+    igst_amount = Decimal("0")
+
+    # -----------------------------------------
+    # SAME STATE
+    # -----------------------------------------
+
+    if (
+
+        customer_state.strip().lower()
+
+        ==
+
+        company_state.strip().lower()
+    ):
+
+        half_tax = (
+            total_tax / Decimal("2")
+        )
+
+        cgst_amount = half_tax
+
+        sgst_amount = half_tax
+
+    # -----------------------------------------
+    # INTERSTATE
+    # -----------------------------------------
+
+    else:
+
+        igst_amount = total_tax
+
+    return {
+
+        "cgst_amount":
+            cgst_amount,
+
+        "sgst_amount":
+            sgst_amount,
+
+        "igst_amount":
+            igst_amount,
+
+        "total_tax":
+            total_tax,
+    }
+
+
+# =====================================================
+# SALES ORDER LINE SERIALIZER
+# =====================================================
+
+class SalesOrderLineSerializer(
+    serializers.ModelSerializer
+):
+
+    product_name = serializers.CharField(
+        source="product.product_name",
         read_only=True
     )
 
@@ -23,55 +120,59 @@ class SalesOrderLineSerializer(serializers.ModelSerializer):
         model = SalesOrderLine
 
         fields = [
+
             "id",
+
             "product",
+
+            "product_name",
+
             "sr_number",
+
             "quantity",
+
+            "fulfilled_quantity",
+
             "unit_price",
+
             "line_total",
+
+            "gst_percentage",
+
+            "cgst_amount",
+
+            "sgst_amount",
+
+            "igst_amount",
+
             "remarks",
         ]
 
         read_only_fields = [
-            "id",
+
             "sr_number",
+
+            "fulfilled_quantity",
+
             "line_total",
+
+            "gst_percentage",
+
+            "cgst_amount",
+
+            "sgst_amount",
+
+            "igst_amount",
         ]
 
 
-# =========================================================
-# WRITE SERIALIZER — SalesOrderLine
-# Used for create/update operations
-# =========================================================
+# =====================================================
+# SALES ORDER LIST SERIALIZER
+# =====================================================
 
-class SalesOrderLineCreateUpdateSerializer(
+class SalesOrderListSerializer(
     serializers.ModelSerializer
 ):
-
-    class Meta:
-
-        model = SalesOrderLine
-
-        fields = [
-            "product",
-            "quantity",
-            "unit_price",
-            "remarks",
-        ]
-
-
-# =========================================================
-# READ SERIALIZER — SalesOrder
-# =========================================================
-
-class SalesOrderSerializer(serializers.ModelSerializer):
-
-    lines = SalesOrderLineSerializer(
-        many=True,
-        read_only=True
-    )
-
-    order_number = serializers.SerializerMethodField()
 
     customer_name = serializers.CharField(
         source="customer.name",
@@ -83,38 +184,62 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         model = SalesOrder
 
         fields = [
+
             "id",
+
             "order_number",
+
             "customer_name",
-            "customer",
-            "customer_po_id",
-            "order_date",
-            "expected_delivery_date",
-            "priority_flag",
+
             "status",
-            "subtotal_amount",
-            "tax_amount",
+
+            "order_date",
+
+            "expected_delivery_date",
+
+            "remaining_days",
+
+            "priority_flag",
+
             "total_amount",
-            "remarks",
-            "lines",
-            "created_at",
-            "updated_at",
         ]
 
-    def get_order_number(self, obj):
 
-        return f"SO-{obj.id:05d}"
+# =====================================================
+# SALES ORDER DETAIL SERIALIZER
+# =====================================================
 
+class SalesOrderDetailSerializer(
+    serializers.ModelSerializer
+):
 
-# =========================================================
-# WRITE SERIALIZER — SalesOrder
-# =========================================================
+    customer_name = serializers.CharField(
+        source="customer.name",
+        read_only=True
+    )
+
+    lines = (
+        SalesOrderLineSerializer(
+            many=True,
+            read_only=True
+        )
+    )
+
+    class Meta:
+
+        model = SalesOrder
+
+        fields = "__all__"
+
+# =====================================================
+# SALES ORDER CREATE / UPDATE
+# =====================================================
 
 class SalesOrderCreateUpdateSerializer(
     serializers.ModelSerializer
 ):
 
-    lines = SalesOrderLineCreateUpdateSerializer(
+    lines = SalesOrderLineSerializer(
         many=True
     )
 
@@ -123,76 +248,240 @@ class SalesOrderCreateUpdateSerializer(
         model = SalesOrder
 
         fields = [
+
             "customer",
-            "customer_po_id",
+
             "order_date",
-            "expected_delivery_date",
-            "priority_flag",
-            "status",
-            "subtotal_amount",
-            "tax_amount",
-            "total_amount",
-            "remarks",
-            "lines",
+
             "delivery_lead_days",
+
+            "expected_delivery_date",
+
+            "priority_flag",
+
+            "status",
+
+            "remarks",
+
+            "lines",
         ]
 
-    # -----------------------------------------------------
-    # CREATE
-    # -----------------------------------------------------
+    # =================================================
+    # VALIDATIONS
+    # =================================================
 
+    def validate(self, attrs):
+
+        lines = attrs.get("lines", [])
+
+        if not lines:
+
+            raise serializers.ValidationError({
+
+                "lines": (
+                    "At least one line item "
+                    "is required."
+                )
+            })
+
+        return attrs
+
+    # =================================================
+    # CREATE
+    # =================================================
+
+    @transaction.atomic
     def create(self, validated_data):
 
-        lines_data = validated_data.pop("lines")
-
         request = self.context.get(
-    "request"
-)
+            "request"
+        )
+
+        line_data = validated_data.pop(
+            "lines"
+        )
+
+        validated_data[
+            "created_by"
+        ] = request.user
 
         order = SalesOrder.objects.create(
-            created_by=request.user,
             **validated_data
         )
 
-        for line in lines_data:
+        subtotal_amount = Decimal("0")
 
-            quantity = line["quantity"]
+        total_tax_amount = Decimal("0")
 
-            unit_price = line["unit_price"]
+        customer = order.customer
+
+        # ---------------------------------------------
+        # CREATE LINES
+        # ---------------------------------------------
+
+        for line in line_data:
+
+            product = line["product"]
+
+            quantity = Decimal(
+                line["quantity"]
+            )
+
+            unit_price = Decimal(
+                line["unit_price"]
+            )
 
             line_total = (
-                quantity *
-                unit_price
+                quantity * unit_price
+            )
+
+            gst_percentage = Decimal(
+                product.gst_percentage
+            )
+
+            gst_data = (
+                calculate_gst_breakup(
+
+                    customer_state=
+                        customer.state,
+
+                    gst_percentage=
+                        gst_percentage,
+
+                    line_total=
+                        line_total,
+                )
             )
 
             SalesOrderLine.objects.create(
+
                 sales_order=order,
 
-                line_total=line_total,
+                product=product,
 
-                **line
+                sr_number=
+                    product.sr_number,
+
+                quantity=
+                    quantity,
+
+                unit_price=
+                    unit_price,
+
+                line_total=
+                    line_total,
+
+                gst_percentage=
+                    gst_percentage,
+
+                cgst_amount=
+                    gst_data[
+                        "cgst_amount"
+                    ],
+
+                sgst_amount=
+                    gst_data[
+                        "sgst_amount"
+                    ],
+
+                igst_amount=
+                    gst_data[
+                        "igst_amount"
+                    ],
+
+                remarks=line.get(
+                    "remarks",
+                    ""
+                )
             )
+
+            subtotal_amount += (
+                line_total
+            )
+
+            total_tax_amount += (
+
+                gst_data[
+                    "total_tax"
+                ]
+            )
+
+        # ---------------------------------------------
+        # ORDER TOTALS
+        # ---------------------------------------------
+
+        order.subtotal_amount = (
+            subtotal_amount
+        )
+
+        order.tax_amount = (
+            total_tax_amount
+        )
+
+        order.total_amount = (
+
+            subtotal_amount
+            +
+            total_tax_amount
+        )
+
+        order.save()
 
         return order
 
-    # -----------------------------------------------------
+    # =================================================
     # UPDATE
-    # -----------------------------------------------------
+    # =================================================
 
+    @transaction.atomic
     def update(
+
         self,
         instance,
         validated_data
     ):
 
-        lines_data = validated_data.pop(
-            "lines",
-            None
+        request = self.context.get(
+            "request"
         )
 
-        # Update order fields
+        line_data = validated_data.pop(
+            "lines"
+        )
 
-        for attr, value in validated_data.items():
+        old_values = {}
+
+        # ---------------------------------------------
+        # TRACK CHANGES
+        # ---------------------------------------------
+
+        tracked_fields = [
+
+            "customer",
+
+            "order_date",
+
+            "expected_delivery_date",
+
+            "status",
+
+            "remarks",
+        ]
+
+        for field in tracked_fields:
+
+            old_values[field] = getattr(
+                instance,
+                field
+            )
+
+        # ---------------------------------------------
+        # UPDATE ORDER FIELDS
+        # ---------------------------------------------
+
+        for attr, value in (
+            validated_data.items()
+        ):
 
             setattr(
                 instance,
@@ -202,34 +491,160 @@ class SalesOrderCreateUpdateSerializer(
 
         instance.save()
 
-        # Replace lines if provided
+        # ---------------------------------------------
+        # DELETE OLD LINES
+        # ---------------------------------------------
 
-        if lines_data is not None:
+        instance.lines.all().delete()
 
-            instance.lines.all().delete()
+        subtotal_amount = Decimal("0")
 
-            for line in lines_data:
+        total_tax_amount = Decimal("0")
 
-                quantity = line["quantity"]
+        customer = instance.customer
 
-                unit_price = line["unit_price"]
+        # ---------------------------------------------
+        # RECREATE LINES
+        # ---------------------------------------------
 
-                line_total = (
-                    quantity *
-                    unit_price
+        for line in line_data:
+
+            product = line["product"]
+
+            quantity = Decimal(
+                line["quantity"]
+            )
+
+            unit_price = Decimal(
+                line["unit_price"]
+            )
+
+            line_total = (
+                quantity * unit_price
+            )
+
+            gst_percentage = Decimal(
+                product.gst_percentage
+            )
+
+            gst_data = (
+                calculate_gst_breakup(
+
+                    customer_state=
+                        customer.state,
+
+                    gst_percentage=
+                        gst_percentage,
+
+                    line_total=
+                        line_total,
                 )
+            )
 
-                SalesOrderLine.objects.create(
-                    sales_order=order,
+            SalesOrderLine.objects.create(
 
-                    line_total=line_total,
+                sales_order=instance,
 
-                    **line
+                product=product,
+
+                sr_number=
+                    product.sr_number,
+
+                quantity=
+                    quantity,
+
+                unit_price=
+                    unit_price,
+
+                line_total=
+                    line_total,
+
+                gst_percentage=
+                    gst_percentage,
+
+                cgst_amount=
+                    gst_data[
+                        "cgst_amount"
+                    ],
+
+                sgst_amount=
+                    gst_data[
+                        "sgst_amount"
+                    ],
+
+                igst_amount=
+                    gst_data[
+                        "igst_amount"
+                    ],
+
+                remarks=line.get(
+                    "remarks",
+                    ""
                 )
+            )
 
-                SalesOrderLine.objects.create(
+            subtotal_amount += (
+                line_total
+            )
+
+            total_tax_amount += (
+
+                gst_data[
+                    "total_tax"
+                ]
+            )
+
+        # ---------------------------------------------
+        # UPDATE TOTALS
+        # ---------------------------------------------
+
+        instance.subtotal_amount = (
+            subtotal_amount
+        )
+
+        instance.tax_amount = (
+            total_tax_amount
+        )
+
+        instance.total_amount = (
+
+            subtotal_amount
+            +
+            total_tax_amount
+        )
+
+        instance.save()
+
+        # ---------------------------------------------
+        # EDIT LOGGING
+        # ---------------------------------------------
+
+        for field in tracked_fields:
+
+            old_value = old_values[field]
+
+            new_value = getattr(
+                instance,
+                field
+            )
+
+            if old_value != new_value:
+
+                SalesOrderEditLog.objects.create(
+
                     sales_order=instance,
-                    **line
+
+                    field_name=field,
+
+                    old_value=str(
+                        old_value
+                    ),
+
+                    new_value=str(
+                        new_value
+                    ),
+
+                    changed_by=request.user
                 )
 
         return instance

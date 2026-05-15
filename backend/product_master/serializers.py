@@ -26,10 +26,13 @@ class ProductListSerializer(
             "color",
 
             "base_unit",
+            
+            "gst_percentage",
 
             "image",
 
             "is_active",
+
         ]
 
 class ProductDetailSerializer(

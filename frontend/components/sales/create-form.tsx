@@ -1,660 +1,905 @@
 "use client"
 
-import { useState } from "react"
+import {
 
-import { useRouter } from "next/navigation"
+  useMemo,
 
-const UOM_OPTIONS = [
+  useState,
 
-  "PCS",
-  "GROSS",
-  "METER",
-  "ROLL",
-  "SET",
-]
+} from "react"
 
-const COMPANY_STATE =
-  "Karnataka"
+import { useRouter }
+from "next/navigation"
 
-interface Customer {
+import {
 
-  id: number
+  createSalesOrder,
 
-  customer_code: string
+} from "@/lib/api/sales"
 
-  name: string
 
-  state: string
-}
-
-interface Product {
-
-  id: number
-
-  sr_number: string
-
-  product_name: string
-
-  base_unit: string
-}
-
-interface LineItem {
-
-  product_id: string
-
-  quantity: number
-
-  unit_price: number
-
-  unit: string
-
-  gst_percentage: number
-}
-
-interface Props {
-
-  customers: Customer[]
-
-  products: Product[]
-}
 
 export default function
-CreateSalesOrderForm({
+CreateSalesForm({
 
   customers,
+
   products,
 
-}: Props) {
+  companyState,
 
-  const [lineItems, setLineItems] =
-    useState<LineItem[]>([
-      {
-        product_id: "",
-        quantity: 1,
-        unit_price: 0,
-        unit: "",
-        gst_percentage: 18,
-      },
-    ])
-
-  const [customerId, setCustomerId] =
-    useState("")
-
-  const [customerPO, setCustomerPO] =
-    useState("")
-
-  const router =  useRouter()
+}: any) {
   
+
+  const router = useRouter()
+
+  // =================================================
+  // HEADER STATE
+  // =================================================
+
+  const [
+    customer,
+
+    setCustomer
+
+  ] = useState("")
+
+  const [
+    orderDate,
+
+    setOrderDate
+
+  ] = useState(
+
+    new Date()
+      .toISOString()
+      .split("T")[0]
+  )
+
   const [
     deliveryLeadDays,
-    setDeliveryLeadDays,
-  ] = useState(0)
+
+    setDeliveryLeadDays
+
+  ] = useState("")
+
+  const [
+    expectedDeliveryDate,
+
+    setExpectedDeliveryDate
+
+  ] = useState("")
 
   const [
     priorityFlag,
-    setPriorityFlag,
+
+    setPriorityFlag
+
   ] = useState(false)
 
-  const [remarks, setRemarks] =
-    useState("")
+  const [
+    remarks,
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false)
-  
+    setRemarks
 
-  const [errors, setErrors] =
-    useState<any>({})
-  
-  const selectedCustomer =
-    customers.find(
-    (customer) =>
+  ] = useState("")
 
-      customer.id.toString() ===
-      customerId
-  )
+  // =================================================
+  // LINE ITEMS
+  // =================================================
 
-const isInterState =
+  const [
+    lines,
 
-  selectedCustomer
-    ? (
-        selectedCustomer.state !==
-        COMPANY_STATE
+    setLines
+
+  ] = useState<any[]>([])
+
+  // =================================================
+  // NEW LINE STATE
+  // =================================================
+
+  const [
+    selectedSr,
+
+    setSelectedSr
+
+  ] = useState("")
+
+  const [
+    quantity,
+
+    setQuantity
+
+  ] = useState("")
+
+  const [
+    unitPrice,
+
+    setUnitPrice
+
+  ] = useState("")
+
+  const [
+    lineRemarks,
+
+    setLineRemarks
+
+  ] = useState("")
+
+    // =================================================
+  // VALIDATION ERRORS
+  // =================================================
+
+  const [
+    errors,
+
+    setErrors
+
+  ] = useState<any>({})
+
+  // =================================================
+  // SR PRODUCT LOOKUP
+  // =================================================
+
+  const selectedProduct =
+    useMemo(() => {
+
+      return products.find(
+        (product: any) =>
+
+          product.sr_number
+            ===
+          selectedSr
       )
-    : false
 
-  // =====================================================
-  // TOTALS ENGINE
-  // =====================================================
+    }, [
 
-  const lineTotals =
+      selectedSr,
 
-    lineItems.map(
-      (item) => {
+      products,
+    ])
 
-        const taxableValue =
 
-          item.quantity *
-          item.unit_price
+  // =================================================
+  // CUSTOMER LOOKUP
+  // =================================================
 
-        const gstAmount =
+  const selectedCustomer =
+  useMemo(() => {
 
-    taxableValue *
-    (
-        item.gst_percentage / 100
+    return customers.find(
+      (item: any) =>
+
+        String(item.id)
+          ===
+        String(customer)
     )
 
-    const cgst =
+  }, [
 
-    isInterState
-        ? 0
-        : gstAmount / 2
+    customer,
 
-    const sgst =
+    customers,
+  ])
+  // =================================================
+  // DELIVERY DATE AUTO CALCULATION
+  // =================================================
 
-    isInterState
-        ? 0
-        : gstAmount / 2
+  function calculateExpectedDate(
+    leadDays: string
+  ) {
 
-    const igst =
+    if (
+      !orderDate ||
+      !leadDays
+    ) return
 
-    isInterState
-        ? gstAmount
-        : 0
+    const date =
+      new Date(orderDate)
 
-    const lineGrandTotal =
+    date.setDate(
 
-          taxableValue +
-          gstAmount
+      date.getDate()
+      +
+      Number(leadDays)
+    )
+
+    const formatted =
+      date
+        .toISOString()
+        .split("T")[0]
+
+    setExpectedDeliveryDate(
+      formatted
+    )
+  }
+
+  function calculateLeadDays(
+    deliveryDate: string
+  ) {
+
+    if (
+      !orderDate ||
+      !deliveryDate
+    ) return
+
+    const start =
+      new Date(orderDate)
+
+    const end =
+      new Date(deliveryDate)
+
+    const diff =
+      Math.ceil(
+
+        (
+          end.getTime()
+          -
+          start.getTime()
+        )
+
+        /
+
+        (
+          1000
+          * 60
+          * 60
+          * 24
+        )
+      )
+
+    setDeliveryLeadDays(
+      String(diff)
+    )
+  }
+
+    // =================================================
+    // GST CALCULATION
+    // =================================================
+
+    function calculateGST(
+
+      amount: number,
+
+      gstPercentage: number
+    ) {
+
+      const totalTax = (
+
+        amount
+        *
+        gstPercentage
+
+      ) / 100
+
+      const sameState =
+
+        selectedCustomer?.state
+          ?.toLowerCase()
+
+        ===
+
+        companyState
+          .toLowerCase()
+
+      if (sameState) {
 
         return {
 
-          taxableValue,
+          cgst:
+            totalTax / 2,
 
-          gstAmount,
+          sgst:
+            totalTax / 2,
 
-          cgst,
+          igst: 0,
 
-          sgst,
-          
-          igst,
-
-          lineGrandTotal,
+          totalTax,
         }
       }
-    )
 
-  const subtotal =
+      return {
 
-    lineTotals.reduce(
+        cgst: 0,
 
-      (total, line) =>
+        sgst: 0,
 
-        total +
-        line.taxableValue,
+        igst: totalTax,
 
-      0
-    )
-
-  const totalCGST =
-
-    lineTotals.reduce(
-
-      (total, line) =>
-
-        total +
-        line.cgst,
-
-      0
-    )
-
-  const totalSGST =
-
-    lineTotals.reduce(
-
-      (total, line) =>
-
-        total +
-        line.sgst,
-
-      0
-    )
-
-  const totalIGST =
-
-  lineTotals.reduce(
-
-    (total, line) =>
-
-      total +
-      line.igst,
-
-    0
-  )
-
-  const totalGST =
-
-    lineTotals.reduce(
-
-      (total, line) =>
-
-        total +
-        line.gstAmount,
-
-      0
-    )
-
-  const grandTotal =
-
-    lineTotals.reduce(
-
-      (total, line) =>
-
-        total +
-        line.lineGrandTotal,
-
-      0
-    )
-
-  // =====================================================
-  // SUBMIT
-  // =====================================================
-
-  async function handleSubmit() {
-
-    try {
-
-      setIsSubmitting(true)
-      
-      const validationErrors: any = {}
-
-      if (!customerId) {
-
-        validationErrors.customer =
-          "Please select a customer"
+        totalTax,
       }
+    }
+    
+  // =================================================
+  // ADD LINE
+  // =================================================
 
-      if (deliveryLeadDays <= 0) {
+  function addLine() {
+    if (!customer) {
 
-            validationErrors.delivery_lead_days =
-              "Lead time must be greater than zero"
-          }
+        setErrors({
 
-      if (lineItems.length === 0) {
+          ...errors,
 
-        validationErrors.line_items =
-          "Add at least one line item"
-      }
-
-      lineItems.forEach(
-        (item, index) => {
-
-          if (!item.product_id) {
-
-            validationErrors[
-              `product_${index}`
-            ] =
-
-              "Please select a product"
-          }
-
-          if (!item.unit) {
-
-            validationErrors[
-              `uom_${index}`
-            ] =
-
-              "Please select UOM"
-          }
-
-          if (item.quantity <= 0) {
-
-            validationErrors[
-              `quantity_${index}`
-            ] =
-
-              "Quantity must be greater than zero"
-          }
-
-          if (item.unit_price < 0) {
-
-            validationErrors[
-              `price_${index}`
-            ] =
-
-              "Unit price cannot be negative"
-          }
-
-          
-        }
-      )
-
-      if (
-        Object.keys(
-          validationErrors
-        ).length > 0
-      ) {
-
-        setErrors(
-          validationErrors
-        )
-
-        setIsSubmitting(false)
+          customer:
+            "Select customer before adding products",
+        })
 
         return
       }
-            
-      const payload = {
 
-        customer:
-          Number(customerId),
 
-        customer_po_id:
-          customerPO,
+    if (
 
-        order_date:
-          new Date()
-            .toISOString()
-            .split("T")[0],
+      !selectedProduct ||
 
-        delivery_lead_days:
-          deliveryLeadDays,
+      !quantity ||
 
-        priority_flag:
-          priorityFlag,
-
-        status:
-          "DRAFT",
-
-        subtotal_amount:
-        Number(
-            subtotal.toFixed(2)
-        ),
-
-        tax_amount:
-        Number(
-            totalGST.toFixed(2)
-        ),
-
-        total_amount:
-        Number(
-            grandTotal.toFixed(2)
-        ),
-
-        remarks,
-
-        lines:
-
-          lineItems.map(
-            (item) => ({
-
-              product:
-                Number(
-                  item.product_id
-                ),
-
-              quantity:
-                item.quantity,
-
-              unit_price:
-                Number(
-                    item.unit_price.toFixed(2)
-                ),
-
-              remarks: "",
-            })
-          ),
-      }
-
-      const response = await fetch(
-
-    "http://localhost:8000/api/sales-orders/",
-
-    {
-        method: "POST",
-
-        credentials: "include",
-
-        headers: {
-        "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify(
-        payload
-        ),
-    }
-    )
-
-    if (!response.ok) {
-
-      const errorData =
-        await response.json()
-
-      setErrors(errorData)
+      !unitPrice
+    ) {
 
       return
     }
 
-    const createdOrder =
-    await response.json()
+    const amount =
 
+  Number(quantity)
+  *
+  Number(unitPrice)
 
-    router.push(
-        `/sales/${createdOrder.id}`
+  const gstData =
+    calculateGST(
+
+      amount,
+
+      Number(
+        selectedProduct
+          .gst_percentage
+      )
     )
 
-    } catch {
+    setErrors({
 
-  setErrors({
-    non_field_errors: [
-      "Something went wrong. Please try again."
-    ]
-  })
+        ...errors,
 
-  }finally {
+        customer: "",
 
-      setIsSubmitting(false)
+        lines: "",
+        })
+
+    setLines([
+
+      ...lines,
+
+      {
+
+        product:
+          selectedProduct.id,
+
+        sr_number:
+          selectedProduct.sr_number,
+
+        product_name:
+          selectedProduct.product_name,
+
+        specification:
+          selectedProduct
+            .size_or_variant,
+
+        color:
+          selectedProduct.color,
+
+        quantity:
+          Number(quantity),
+
+        unit_price:
+          Number(unitPrice),
+        
+        gst_percentage:
+          Number(
+            selectedProduct
+              .gst_percentage
+          ),
+
+        cgst:
+          gstData.cgst,
+
+        sgst:
+          gstData.sgst,
+
+        igst:
+          gstData.igst,
+
+        total_tax:
+          gstData.totalTax,
+          
+        remarks:
+          lineRemarks,
+      }
+    ])
+
+    // RESET
+
+    setSelectedSr("")
+
+    setQuantity("")
+
+    setUnitPrice("")
+
+    setLineRemarks("")
+  }
+
+  // =================================================
+  // REMOVE LINE
+  // =================================================
+
+  function removeLine(
+    index: number
+  ) {
+
+    setLines(
+
+      lines.filter(
+        (_: any, i: number) =>
+          i !== index
+      )
+    )
+  }
+
+  // =================================================
+  // TOTAL PREVIEW
+  // =================================================
+
+  const estimatedSubtotal =
+    useMemo(() => {
+
+      return lines.reduce(
+
+        (
+          total: number,
+
+          line: any
+        ) => {
+
+          return (
+
+            total
+            +
+            (
+              line.quantity
+              *
+              line.unit_price
+            )
+          )
+
+        },
+
+        0
+      )
+
+    }, [lines])
+
+
+      const estimatedTotalGST =
+    useMemo(() => {
+
+      return lines.reduce(
+
+        (
+          total: number,
+
+          line: any
+        ) => {
+
+          return (
+            total
+            +
+            line.total_tax
+          )
+
+        },
+
+        0
+      )
+
+    }, [lines])
+
+  const estimatedGrandTotal =
+
+    estimatedSubtotal
+    +
+    estimatedTotalGST
+  // =================================================
+  // SUBMIT
+  // =================================================
+
+  async function
+  handleSubmit(
+    e: React.FormEvent
+  ) {
+
+    e.preventDefault()
+
+    const newErrors: any = {}
+
+    if (!customer) {
+
+      newErrors.customer =
+        "Customer is required"
+    }
+
+    if (!orderDate) {
+
+      newErrors.orderDate =
+        "Order date is required"
+    }
+
+    if (lines.length === 0) {
+
+      newErrors.lines =
+        "Add at least one product"
+    }
+
+    setErrors(newErrors)
+
+    if (
+      Object.keys(newErrors)
+        .length > 0
+    ) {
+
+      return
+    }
+
+    try {
+
+      await createSalesOrder({
+
+        customer,
+
+        order_date:
+          orderDate,
+
+        delivery_lead_days:
+          deliveryLeadDays
+            ? Number(
+                deliveryLeadDays
+              )
+            : null,
+
+        expected_delivery_date:
+          expectedDeliveryDate
+            || null,
+
+        priority_flag:
+          priorityFlag,
+
+        remarks,
+
+        lines: lines.map(
+          (line: any) => ({
+
+            product:
+              line.product,
+
+            quantity:
+              line.quantity,
+
+            unit_price:
+              line.unit_price,
+
+            remarks:
+              line.remarks,
+          })
+        )
+      })
+
+      router.push("/sales")
+
+      router.refresh()
+
+    } catch (error) {
+
+      console.error(error)
+
+      alert(
+        "Failed to create sales order"
+      )
     }
   }
 
   return (
 
-    <div className="p-8 text-white">
+    <form
+      onSubmit={handleSubmit}
 
-      <h1 className="text-3xl font-bold mb-8">
-        Create Sales Order
-      </h1>
+      className="
+        space-y-8
+      "
+    >
 
-      {/* CUSTOMER */}
-
-      <div className="mb-8">
+      {/* ================================================= */}
+      {/* ORDER HEADER */}
+      {/* ================================================= */}
 
       <div
         className="
-          flex
-          items-center
-          justify-between
-          mb-2
+          bg-zinc-900/60
+          border
+          border-zinc-800
+          rounded-2xl
+          p-6
+          grid
+          grid-cols-1
+          lg:grid-cols-2
+          gap-6
         "
       >
 
-        <label>
-          Customer
-        </label>
+        {/* CUSTOMER */}
 
-        <a
-          href="/customers/create"
-
+        <div
           className="
-            text-sm
-            text-blue-400
-            underline
-          "
-        >
-          Add New Customer
-        </a>
-
-      </div>
-
-        <select
-          value={customerId}
-
-          onChange={(e) =>
-            setCustomerId(
-              e.target.value
-            )
-          }
-
-          className="
-            bg-zinc-900
-            border
-            border-zinc-700
-            rounded-lg
-            px-4
-            py-2
-            w-full
+            space-y-2
           "
         >
 
-          <option>
-            Select Customer
-          </option>
-
-          {
-            customers.map(
-              (customer) => (
-
-                <option
-                  key={customer.id}
-                  value={customer.id}
-                >
-                  {
-                    customer.customer_code
-                  }
-                  {" - "}
-                  {customer.name}
-
-                </option>
-              )
-            )
-          }
-
-        </select>
-        {
-        errors.customer && (
-
-          <p
+          <label
             className="
-              text-red-500
               text-sm
-              mt-2
+              text-zinc-400
+            "
+          >
+            Customer *
+          </label>
+
+          <select
+
+            required
+
+            disabled={lines.length > 0}
+
+            value={customer}
+            
+            onChange={(e) => {
+
+              setCustomer(
+                e.target.value
+              )
+
+              setErrors({
+                ...errors,
+                customer: "",
+              })
+            }}
+
+             className="
+              w-full
+              bg-zinc-950
+              border
+              border-zinc-800
+              rounded-xl
+              px-4
+              py-3
+              text-white
+
+              disabled:opacity-60
+              disabled:cursor-not-allowed
             "
           >
 
-            {errors.customer}
+            <option value="">
+              Select Customer
+            </option>
 
-          </p>
-        )
-      }
+            {
+              customers.map(
+                (customer: any) => (
 
-      </div>
+                  <option
 
-      {/* SALES ORDER DETAILS */}
+                    key={customer.id}
 
-      <div className="grid grid-cols-2 gap-6 mb-8">
+                    value={customer.id}
+                  >
 
-        {/* CUSTOMER PO */}
+                    {
+                      customer.name
+                    }
 
-        <div>
-
-          <label className="block mb-2">
-            Customer PO Number
-          </label>
-
-          <input
-            type="text"
-
-            value={customerPO}
-
-            onChange={(e) =>
-              setCustomerPO(
-                e.target.value
-              )
-            }
-
-            className="
-              w-full
-              bg-zinc-900
-              border
-              border-zinc-700
-              rounded-lg
-              px-4
-              py-2
-            "
-          />
-
-        </div>
-
-        {/* DELIVERY LEAD TIME */}
-
-        <div>
-
-          <label className="block mb-2">
-            Delivery Lead Time (Days)
-          </label>
-
-          <input
-            type="number"
-
-            min="0"
-
-            value={deliveryLeadDays}
-
-            onChange={(e) =>
-              setDeliveryLeadDays(
-                Number(
-                  e.target.value
+                  </option>
                 )
               )
             }
 
+          </select>
+            {
+              errors.customer && (
+
+                <p
+                  className="
+                    text-sm
+                    text-red-400
+                  "
+                >
+                  {
+                    errors.customer
+                  }
+                </p>
+              )
+            }
+        </div>
+
+        {/* ORDER DATE */}
+
+        <div
+          className="
+            space-y-2
+          "
+        >
+
+          <label
+            className="
+              text-sm
+              text-zinc-400
+            "
+          >
+            Order Date *
+          </label>
+
+          <input
+
+            required
+
+            type="date"
+
+            value={orderDate}
+
+            onChange={(e) => {
+
+              setOrderDate(
+                e.target.value
+              )
+
+              setErrors({
+                ...errors,
+                orderDate: "",
+              })
+            }}
+
             className="
               w-full
-              bg-zinc-900
+              bg-zinc-950
               border
-              border-zinc-700
-              rounded-lg
+              border-zinc-800
+              rounded-xl
               px-4
-              py-2
+              py-3
+              text-white
             "
           />
 
           {
-            errors.delivery_lead_days && (
+            errors.orderDate && (
 
               <p
                 className="
-                  text-red-500
                   text-sm
-                  mt-2
+                  text-red-400
                 "
               >
-
                 {
-                  errors
-                  .delivery_lead_days
+                  errors.orderDate
                 }
-
               </p>
             )
           }
-          </div>
+
         </div>
-      {/* PRIORITY */}
 
-      <div className="mb-8">
+        {/* LEAD DAYS */}
 
-        <label
+        <div
+          className="
+            space-y-2
+          "
+        >
+
+          <label
+            className="
+              text-sm
+              text-zinc-400
+            "
+          >
+            Delivery Lead Days
+          </label>
+
+          <input
+
+            type="number"
+
+            value={
+              deliveryLeadDays
+            }
+
+            onChange={(e) => {
+
+              setDeliveryLeadDays(
+                e.target.value
+              )
+
+              calculateExpectedDate(
+                e.target.value
+              )
+            }}
+
+            className="
+              w-full
+              bg-zinc-950
+              border
+              border-zinc-800
+              rounded-xl
+              px-4
+              py-3
+              text-white
+            "
+          />
+
+        </div>
+
+        {/* EXPECTED DELIVERY */}
+
+        <div
+          className="
+            space-y-2
+          "
+        >
+
+          <label
+            className="
+              text-sm
+              text-zinc-400
+            "
+          >
+            Expected Delivery
+          </label>
+
+          <input
+
+            type="date"
+
+            value={
+              expectedDeliveryDate
+            }
+
+            onChange={(e) => {
+
+              setExpectedDeliveryDate(
+                e.target.value
+              )
+
+              calculateLeadDays(
+                e.target.value
+              )
+            }}
+
+            className="
+              w-full
+              bg-zinc-950
+              border
+              border-zinc-800
+              rounded-xl
+              px-4
+              py-3
+              text-white
+            "
+          />
+
+        </div>
+
+        {/* PRIORITY */}
+
+        <div
           className="
             flex
             items-center
@@ -663,6 +908,7 @@ const isInterState =
         >
 
           <input
+
             type="checkbox"
 
             checked={priorityFlag}
@@ -672,738 +918,985 @@ const isInterState =
                 e.target.checked
               )
             }
-          />
-
-          Priority Order
-
-        </label>
-
-      </div>
-
-      {/* REMARKS */}
-
-      <div className="mb-8">
-
-        <label className="block mb-2">
-          Remarks
-        </label>
-
-        <textarea
-          value={remarks}
-
-          onChange={(e) =>
-            setRemarks(
-              e.target.value
-            )
-          }
-
-          rows={4}
-
-          className="
-            w-full
-            bg-zinc-900
-            border
-            border-zinc-700
-            rounded-lg
-            px-4
-            py-2
-          "
-        />
-
-      </div>
-
-      {/* LINE ITEMS */}
-
-      <div>
-
-        <div
-          className="
-            flex
-            items-center
-            justify-between
-            mb-4
-          "
-        >
-
-          <h2 className="text-xl">
-            Line Items
-          </h2>
-
-          <button
-            type="button"
-
-            onClick={() =>
-
-              setLineItems([
-                ...lineItems,
-
-                {
-                  product_id: "",
-                  quantity: 1,
-                  unit_price: 0,
-                  unit: "",
-                  gst_percentage: 18,
-                },
-              ])
-            }
 
             className="
-              bg-white
-              text-black
-              px-4
-              py-2
-              rounded-lg
+              w-4
+              h-4
+            "
+          />
+
+          <span
+            className="
+              text-zinc-300
             "
           >
-            Add Row
-          </button>
+            High Priority Order
+          </span>
 
         </div>
 
-        {/* HEADERS */}
+        {/* REMARKS */}
+
+        <div
+          className="
+            lg:col-span-2
+            space-y-2
+          "
+        >
+
+          <label
+            className="
+              text-sm
+              text-zinc-400
+            "
+          >
+            Remarks
+          </label>
+
+          <textarea
+
+            rows={4}
+
+            value={remarks}
+
+            onChange={(e) =>
+              setRemarks(
+                e.target.value
+              )
+            }
+
+            className="
+              w-full
+              bg-zinc-950
+              border
+              border-zinc-800
+              rounded-xl
+              px-4
+              py-3
+              text-white
+            "
+          />
+
+        </div>
+
+      </div>
+      {/* ================================================= */}
+      {/* ADD LINE ITEM */}
+      {/* ================================================= */}
+
+      <div
+        className="
+          bg-zinc-900/60
+          border
+          border-zinc-800
+          rounded-2xl
+          p-6
+          space-y-6
+        "
+      >
+
+        <div>
+
+          <h2
+            className="
+              text-xl
+              font-semibold
+            "
+          >
+            Add Products
+          </h2>
+
+          <p
+            className="
+              text-zinc-400
+              mt-1
+            "
+          >
+            Search and add using
+            SR Number.
+          </p>
+
+        </div>
 
         <div
           className="
             grid
-            grid-cols-15
+            grid-cols-1
+            lg:grid-cols-5
             gap-4
-            mb-3
-            text-sm
-            text-zinc-400
-            font-medium
           "
         >
 
-          <div className="col-span-4">
-            Product
+          {/* SR NUMBER */}
+
+          <div
+            className="
+              lg:col-span-2
+              space-y-2
+            "
+          >
+
+            <label
+              className="
+                text-sm
+                text-zinc-400
+              "
+            >
+              SR Number *
+            </label>
+
+            <input
+
+              list="products"
+
+              value={selectedSr}
+
+              onChange={(e) =>
+                setSelectedSr(
+                  e.target.value
+                )
+              }
+
+              placeholder="Search SR Number"
+
+              className="
+                w-full
+                bg-zinc-950
+                border
+                border-zinc-800
+                rounded-xl
+                px-4
+                py-3
+                text-white
+              "
+            />
+
+            <datalist id="products">
+
+              {
+                products.map(
+                  (product: any) => (
+
+                    <option
+
+                      key={product.id}
+
+                      value={
+                        product.sr_number
+                      }
+                    >
+
+                      {
+                        product.product_name
+                      }
+
+                    </option>
+                  )
+                )
+              }
+
+            </datalist>
+
           </div>
 
-          <div className="col-span-2">
-            Qty
+          {/* QUANTITY */}
+
+          <div
+            className="
+              space-y-2
+            "
+          >
+
+            <label
+              className="
+                text-sm
+                text-zinc-400
+              "
+            >
+              Quantity *
+            </label>
+
+            <input
+
+              type="number"
+
+              value={quantity}
+
+              onChange={(e) =>
+                setQuantity(
+                  e.target.value
+                )
+              }
+
+              className="
+                w-full
+                bg-zinc-950
+                border
+                border-zinc-800
+                rounded-xl
+                px-4
+                py-3
+                text-white
+              "
+            />
+
           </div>
 
-          <div className="col-span-2">
-            UOM
+          {/* UNIT PRICE */}
+
+          <div
+            className="
+              space-y-2
+            "
+          >
+
+            <label
+              className="
+                text-sm
+                text-zinc-400
+              "
+            >
+              Unit Price *
+            </label>
+
+            <input
+
+              type="number"
+
+              value={unitPrice}
+
+              onChange={(e) =>
+                setUnitPrice(
+                  e.target.value
+                )
+              }
+
+              className="
+                w-full
+                bg-zinc-950
+                border
+                border-zinc-800
+                rounded-xl
+                px-4
+                py-3
+                text-white
+              "
+            />
+
           </div>
 
-          <div className="col-span-2">
-            Rate
-          </div>
+          {/* BUTTON */}
 
-          <div className="col-span-2">
-            GST %
-          </div>
+          <div
+            className="
+              flex
+              items-end
+            "
+          >
 
-          <div className="col-span-2">
-            Total
-          </div>
+            <button
 
-          <div className="col-span-1">
-            Action
+              type="button"
+
+              onClick={addLine}
+
+              className="
+                w-full
+                bg-white
+                hover:bg-zinc-200
+                transition
+                text-black
+                rounded-xl
+                py-3
+                font-medium
+              "
+            >
+              Add
+            </button>
+
           </div>
 
         </div>
 
-        {/* ROWS */}
+        {/* PRODUCT PREVIEW */}
 
-        <div className="space-y-4">
+        {
+          selectedProduct && (
+
+            <div
+              className="
+                border
+                border-zinc-800
+                rounded-2xl
+                p-5
+                bg-zinc-950/60
+                flex
+                items-center
+                justify-between
+              "
+            >
+
+              <div>
+
+                <p
+                  className="
+                    text-lg
+                    font-semibold
+                    text-white
+                  "
+                >
+                  {
+                    selectedProduct
+                      .product_name
+                  }
+                </p>
+
+                <p
+                  className="
+                    text-zinc-400
+                    mt-1
+                  "
+                >
+                  {
+                    selectedProduct
+                      .size_or_variant
+                  }
+
+                  {" • "}
+
+                  {
+                    selectedProduct
+                      .color
+                  }
+                </p>
+
+              </div>
+
+              <div
+                className="
+                  text-right
+                "
+              >
+
+                <p
+                  className="
+                    text-zinc-500
+                    text-sm
+                  "
+                >
+                  Base Unit
+                </p>
+
+                <p
+                  className="
+                    text-white
+                    font-medium
+                  "
+                >
+                  {
+                    selectedProduct
+                      .base_unit
+                  }
+                </p>
+
+              </div>
+
+            </div>
+          )
+        }
+
+      </div>
 
           {
-            lineItems.map(
-              (item, index) => (
+          errors.lines && (
 
-                <div
-                  key={index}
+            <p
+              className="
+                text-sm
+                text-red-400
+              "
+            >
+              {
+                errors.lines
+              }
+            </p>
+          )
+        }
 
+{/* ================================================= */}
+{/* LINE ITEMS TABLE */}
+{/* ================================================= */}
+
+<div
+  className="
+    border
+    border-zinc-800
+    rounded-2xl
+    overflow-hidden
+    bg-zinc-900/40
+  "
+>
+
+  <table className="w-full">
+
+    <thead
+      className="
+        bg-zinc-900
+      "
+    >
+
+      <tr>
+
+        <th
+          className="
+            px-4
+            py-4
+            text-left
+            text-zinc-400
+            text-sm
+          "
+        >
+          SR Number
+        </th>
+
+        <th
+          className="
+            px-4
+            py-4
+            text-left
+            text-zinc-400
+            text-sm
+          "
+        >
+          Product
+        </th>
+
+        <th
+          className="
+            px-4
+            py-4
+            text-left
+            text-zinc-400
+            text-sm
+          "
+        >
+          Specification
+        </th>
+
+        <th
+          className="
+            px-4
+            py-4
+            text-right
+            text-zinc-400
+            text-sm
+          "
+        >
+          Qty
+        </th>
+
+        <th
+          className="
+            px-4
+            py-4
+            text-right
+            text-zinc-400
+            text-sm
+          "
+        >
+          Unit Price
+        </th>
+
+        <th
+          className="
+            px-4
+            py-4
+            text-right
+            text-zinc-400
+            text-sm
+          "
+        >
+          Base Amount
+        </th>
+
+        <th
+          className="
+            px-4
+            py-4
+            text-right
+            text-zinc-400
+            text-sm
+          "
+        >
+          GST
+        </th>
+
+        <th
+          className="
+            px-4
+            py-4
+            text-right
+            text-zinc-400
+            text-sm
+          "
+        >
+          Grand Total
+        </th>
+
+        <th
+          className="
+            px-4
+            py-4
+            text-center
+            text-zinc-400
+            text-sm
+          "
+        >
+          Action
+        </th>
+
+      </tr>
+
+    </thead>
+
+    <tbody>
+
+      {
+        lines.map(
+          (
+            line: any,
+            index: number
+          ) => {
+
+            const baseAmount =
+
+              line.quantity
+              *
+              line.unit_price
+
+            const grandTotal =
+
+              baseAmount
+              +
+              line.total_tax
+
+            return (
+
+              <tr
+
+                key={index}
+
+                className="
+                  border-t
+                  border-zinc-800
+                "
+              >
+
+                {/* SR */}
+
+                <td
                   className="
-                    grid
-                    grid-cols-15
-                    gap-4
-                    items-start
-                    mb-4
+                    px-4
+                    py-4
+                    text-blue-400
+                    font-medium
+                  "
+                >
+                  {
+                    line.sr_number
+                  }
+                </td>
+
+                {/* PRODUCT */}
+
+                <td
+                  className="
+                    px-4
+                    py-4
+                    text-white
+                  "
+                >
+                  {
+                    line.product_name
+                  }
+                </td>
+
+                {/* SPEC */}
+
+                <td
+                  className="
+                    px-4
+                    py-4
+                    text-zinc-300
                   "
                 >
 
-                  {/* PRODUCT */}
-
-                  <div className="col-span-4">
-
-                    <select
-                      value={item.product_id}
-
-                      onChange={(e) => {
-
-                        const selectedProduct =
-                          products.find(
-                            (p) =>
-                              p.id.toString() ===
-                              e.target.value
-                          )
-
-                        const updated =
-                          [...lineItems]
-
-                        updated[index]
-                          .product_id =
-                            e.target.value
-
-                        if (selectedProduct) {
-
-                          updated[index]
-                            .unit =
-                              selectedProduct.base_unit
-                        }
-
-                        setLineItems(updated)
-                      }}
-
-                      className="
-                        w-full
-                        bg-zinc-900
-                        border
-                        border-zinc-700
-                        rounded-lg
-                        px-4
-                        py-2
-                      "
-                    >
-
-                      <option value="">
-                        Select Product
-                      </option>
-
-                      {
-                        products.map(
-                          (product) => (
-
-                            <option
-                              key={product.id}
-                              value={product.id}
-                            >
-
-                              {
-                                product.sr_number
-                              }
-
-                              {" - "}
-
-                              {
-                                product.product_name
-                              }
-
-                            </option>
-                          )
-                        )
-                      }
-
-                    </select>
-
-                    {
-                      errors[
-                        `product_${index}`
-                      ] && (
-
-                        <p
-                          className="
-                            text-red-500
-                            text-xs
-                            mt-1
-                            h-4
-                          "
-                        >
-
-                          {
-                            errors[
-                              `product_${index}`
-                            ]
-                          }
-
-                        </p>
-                      )
-                    }
-
-                  </div>
-
-                  {/* QUANTITY */}
-
-                  <div className="col-span-2">
-
-                    <input
-                      type="number"
-
-                      placeholder="Qty"
-
-                      min="1"
-
-                      value={item.quantity}
-
-                      onChange={(e) => {
-
-                        const updated =
-                          [...lineItems]
-
-                        updated[index]
-                          .quantity =
-                            Number(
-                              e.target.value
-                            )
-
-                        setLineItems(updated)
-                      }}
-
-                      className="
-                        w-full
-                        bg-zinc-900
-                        border
-                        border-zinc-700
-                        rounded-lg
-                        px-4
-                        py-2
-                      "
-                    />
-
-                    {
-                      errors[
-                        `quantity_${index}`
-                      ] && (
-
-                        <p
-                          className="
-                            text-red-500
-                            text-xs
-                            mt-1
-                            h-4
-                          "
-                        >
-
-                          {
-                            errors[
-                              `quantity_${index}`
-                            ]
-                          }
-
-                        </p>
-                      )
-                    }
-
-                  </div>
-
-                  {/* UOM */}
-
-                  <div className="col-span-2">
-
-                    <select
-                      value={item.unit}
-
-                      onChange={(e) => {
-
-                        const updated =
-                          [...lineItems]
-
-                        updated[index]
-                          .unit =
-                            e.target.value
-
-                        setLineItems(updated)
-                      }}
-
-                      className="
-                        w-full
-                        bg-zinc-900
-                        border
-                        border-zinc-700
-                        rounded-lg
-                        px-4
-                        py-2
-                      "
-                    >
-
-                      <option value="">
-                        Select UOM
-                      </option>
-
-                      {
-                        UOM_OPTIONS.map(
-                          (uom) => (
-
-                            <option
-                              key={uom}
-                              value={uom}
-                            >
-
-                              {uom}
-
-                            </option>
-                          )
-                        )
-                      }
-
-                    </select>
-
-                    {
-                      errors[
-                        `uom_${index}`
-                      ] && (
-
-                        <p
-                          className="
-                            text-red-500
-                            text-xs
-                            mt-1
-                            h-4
-                          "
-                        >
-
-                          {
-                            errors[
-                              `uom_${index}`
-                            ]
-                          }
-
-                        </p>
-                      )
-                    }
-
-                  </div>
-
-                  {/* RATE */}
-
-                  <div className="col-span-2">
-
-                    <input
-                      type="number"
-
-                      placeholder="Rate"
-
-                      min="0"
-
-                      value={item.unit_price}
-
-                      onChange={(e) => {
-
-                        const updated =
-                          [...lineItems]
-
-                        updated[index]
-                          .unit_price =
-                            Number(
-                              e.target.value
-                            )
-
-                        setLineItems(updated)
-                      }}
-
-                      className="
-                        w-full
-                        bg-zinc-900
-                        border
-                        border-zinc-700
-                        rounded-lg
-                        px-4
-                        py-2
-                      "
-                    />
-
-                    {
-                      errors[
-                        `price_${index}`
-                      ] && (
-
-                        <p
-                          className="
-                            text-red-500
-                            text-xs
-                            mt-1
-                            h-4
-                          "
-                        >
-
-                          {
-                            errors[
-                              `price_${index}`
-                            ]
-                          }
-
-                        </p>
-                      )
-                    }
-                  </div>        
-     
-                  {/* GST */}
-
-                  <input
-                    type="number"
-
-                    value={item.gst_percentage}
-
-                    onChange={(e) => {
-
-                      const updated =
-                        [...lineItems]
-
-                      updated[index]
-                        .gst_percentage =
-                          Number(
-                            e.target.value
-                          )
-
-                      setLineItems(updated)
-                    }}
-
-                    className="
-                      col-span-2
-                      bg-zinc-900
-                      border
-                      border-zinc-700
-                      rounded-lg
-                      px-4
-                      py-2
-                    "
-                  />
-
-                  {/* TOTAL */}
+                  {
+                    line.specification
+                  }
+
+                  {" • "}
+
+                  {
+                    line.color
+                  }
+
+                </td>
+
+                {/* QTY */}
+
+                <td
+                  className="
+                    px-4
+                    py-4
+                    text-right
+                    text-zinc-300
+                  "
+                >
+                  {
+                    line.quantity
+                  }
+                </td>
+
+                {/* UNIT PRICE */}
+
+                <td
+                  className="
+                    px-4
+                    py-4
+                    text-right
+                    text-zinc-300
+                  "
+                >
+
+                  ₹
+
+                  {
+                    line.unit_price
+                  }
+
+                </td>
+
+                {/* BASE */}
+
+                <td
+                  className="
+                    px-4
+                    py-4
+                    text-right
+                    text-white
+                  "
+                >
+
+                  ₹
+
+                  {
+                    baseAmount
+                      .toFixed(2)
+                  }
+
+                </td>
+
+                {/* GST */}
+
+                <td
+                  className="
+                    px-4
+                    py-4
+                    text-right
+                  "
+                >
 
                   <div
                     className="
-                      col-span-2
-                      text-zinc-300
+                      text-white
+                      font-medium
                     "
                   >
-                    ₹
+
                     {
-                      lineTotals[index]
-                        ?.lineGrandTotal
-                        .toFixed(2)
-                    }
+                      line.gst_percentage
+                    }%
+
                   </div>
 
-                  {/* REMOVE */}
+                  {
+                    line.cgst > 0 && (
+
+                      <div
+                        className="
+                          text-xs
+                          text-zinc-500
+                          mt-1
+                        "
+                      >
+
+                        CGST:
+                        ₹
+                        {
+                          line.cgst
+                            .toFixed(2)
+                        }
+
+                        <br />
+
+                        SGST:
+                        ₹
+                        {
+                          line.sgst
+                            .toFixed(2)
+                        }
+
+                      </div>
+                    )
+                  }
+
+                  {
+                    line.igst > 0 && (
+
+                      <div
+                        className="
+                          text-xs
+                          text-zinc-500
+                          mt-1
+                        "
+                      >
+
+                        IGST:
+                        ₹
+                        {
+                          line.igst
+                            .toFixed(2)
+                        }
+
+                      </div>
+                    )
+                  }
+
+                </td>
+
+                {/* GRAND TOTAL */}
+
+                <td
+                  className="
+                    px-4
+                    py-4
+                    text-right
+                    text-white
+                    font-semibold
+                  "
+                >
+
+                  ₹
+
+                  {
+                    grandTotal
+                      .toFixed(2)
+                  }
+
+                </td>
+
+                {/* ACTION */}
+
+                <td
+                  className="
+                    px-4
+                    py-4
+                    text-center
+                  "
+                >
 
                   <button
+
                     type="button"
 
-                    onClick={() => {
-
-                      const updated =
-                        lineItems.filter(
-                          (_, i) =>
-                            i !== index
-                        )
-
-                      setLineItems(updated)
-                    }}
+                    onClick={() =>
+                      removeLine(index)
+                    }
 
                     className="
-                      col-span-1
                       text-red-400
+                      hover:text-red-300
                     "
                   >
                     Remove
                   </button>
 
-                </div>
-              )
+                </td>
+
+              </tr>
             )
           }
-
-        </div>
-
-      </div>
-
-     
-    {/* ORDER SUMMARY */}
-
-    <div
-    className="
-        mt-10
-        ml-auto
-        max-w-md
-        border
-        border-zinc-800
-        rounded-xl
-        p-6
-        space-y-4
-    "
-    >
-
-    <div
-        className="
-        flex
-        justify-between
-        "
-    >
-
-        <span>
-        Subtotal
-        </span>
-
-        <span>
-        ₹
-        {
-            subtotal.toFixed(2)
-        }
-        </span>
-
-    </div>
-
-    {
-        isInterState ? (
-
-        <div
-            className="
-            flex
-            justify-between
-            "
-        >
-
-            <span>
-            IGST
-            </span>
-
-            <span>
-            ₹
-            {
-                totalIGST.toFixed(2)
-            }
-            </span>
-
-        </div>
-
-        ) : (
-
-        <>
-
-            <div
-            className="
-                flex
-                justify-between
-            "
-            >
-
-            <span>
-                CGST
-            </span>
-
-            <span>
-                ₹
-                {
-                totalCGST.toFixed(2)
-                }
-            </span>
-
-            </div>
-
-            <div
-            className="
-                flex
-                justify-between
-            "
-            >
-
-            <span>
-                SGST
-            </span>
-
-            <span>
-                ₹
-                {
-                totalSGST.toFixed(2)
-                }
-            </span>
-
-            </div>
-
-        </>
-
         )
-    }
+      }
 
-    <div
-        className="
-        flex
-        justify-between
+    </tbody>
+
+  </table>
+
+</div>
+
+      {/* ================================================= */}
+      {/* TOTALS */}
+      {/* ================================================= */}
+<div
+  className="
+    w-full
+    max-w-md
+    bg-zinc-900/60
+    border
+    border-zinc-800
+    rounded-2xl
+    p-6
+    space-y-4
+  "
+>
+
+  <div
+    className="
+      flex
+      items-center
+      justify-between
+    "
+  >
+
+    <span
+      className="
+        text-zinc-400
+      "
+    >
+      Estimated Subtotal
+    </span>
+
+    <span
+      className="
+        text-white
+        font-medium
+      "
+    >
+      ₹
+      {
+        estimatedSubtotal
+          .toFixed(2)
+      }
+    </span>
+
+  </div>
+
+  <div
+    className="
+      flex
+      items-center
+      justify-between
+    "
+  >
+
+    <span
+      className="
+        text-zinc-400
+      "
+    >
+      Estimated GST
+    </span>
+
+    <span
+      className="
+        text-white
+        font-medium
+      "
+    >
+      ₹
+      {
+        estimatedTotalGST
+          .toFixed(2)
+      }
+    </span>
+
+  </div>
+
+  <div
+    className="
+      border-t
+      border-zinc-800
+      pt-4
+      flex
+      items-center
+      justify-between
+    "
+  >
+
+    <span
+      className="
+        text-lg
+        font-semibold
+        text-white
+      "
+    >
+      Estimated Grand Total
+    </span>
+
+    <span
+      className="
         text-xl
         font-bold
-        border-t
-        border-zinc-700
-        pt-4
-        "
+        text-white
+      "
     >
+      ₹
+      {
+        estimatedGrandTotal
+          .toFixed(2)
+      }
+    </span>
 
-        <span>
-        Grand Total
-        </span>
+  </div>
 
-        <span>
-        ₹
-        {
-            grandTotal.toFixed(2)
-        }
-        </span>
+  <p
+    className="
+      text-xs
+      text-zinc-500
+      leading-relaxed
+    "
+  >
+    GST and final totals
+    will be automatically
+    recalculated by backend
+    during order creation.
+  </p>
 
-    </div>
+</div>
 
-    </div>
-
-
-        
-            {
-      errors.non_field_errors && (
-
-        <div
-          className="
-            bg-red-500/10
-            border
-            border-red-500
-            rounded-lg
-            p-4
-            text-red-400
-            mb-6
-          "
-        >
-
-          {
-            errors
-            .non_field_errors[0]
-          }
-
-        </div>
-      )
-    }
-
+      {/* ================================================= */}
       {/* SUBMIT */}
+      {/* ================================================= */}
 
-      <div className="mt-8">
+      <div
+        className="
+          flex
+          justify-end
+        "
+      >
 
         <button
-          type="button"
 
-          onClick={handleSubmit}
-
-          disabled={isSubmitting}
+          type="submit"
 
           className="
             bg-white
+            hover:bg-zinc-200
+            transition
             text-black
             px-6
             py-3
-            rounded-lg
+            rounded-xl
             font-medium
-            disabled:opacity-50
           "
         >
-
-          {
-            isSubmitting
-              ? "Creating..."
-              : "Create Sales Order"
-          }
-
+          Create Sales Order
         </button>
 
       </div>
 
-    </div>
+    </form>
   )
 }
-

@@ -1,234 +1,74 @@
-from django.db import transaction
+from rest_framework import viewsets
 
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import (
+    IsAuthenticated
+)
 
-from activity_log.utils import log_activity
-from core.permissions import IsEmployee
+from rest_framework.decorators import (
+    action
+)
+
+from rest_framework.response import (
+    Response
+)
 
 from .models import SalesOrder
+
 from .serializers import (
-    SalesOrderSerializer,
+
+    SalesOrderListSerializer,
+
+    SalesOrderDetailSerializer,
+
     SalesOrderCreateUpdateSerializer,
 )
 
-from .services import validate_sales_order
 
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework import status
+class SalesOrderViewSet(
+    viewsets.ModelViewSet
+):
 
+    permission_classes = [
+        IsAuthenticated
+    ]
 
-class SalesOrderViewSet(viewsets.ModelViewSet):
+    queryset = (
+        SalesOrder.objects
+        .select_related(
+            "customer",
+            "created_by"
+        )
+        .prefetch_related(
+            "lines"
+        )
+        .order_by("-id")
+    )
 
-    permission_classes = [IsEmployee]
-
-    queryset = SalesOrder.objects.all().order_by("-id")
+    # =================================================
+    # SERIALIZER SWITCHING
+    # =================================================
 
     def get_serializer_class(self):
 
-        if self.action in [
-            "create",
-            "update",
-            "partial_update",
-        ]:
-            return SalesOrderCreateUpdateSerializer
+        if self.action == "list":
 
-        return SalesOrderSerializer
-
-
-    # --------------------------------------------------
-    # CREATE ORDER
-    # --------------------------------------------------
-
-    def perform_create(self, serializer):
-
-        with transaction.atomic():
-
-            lines_data = serializer.validated_data.get(
-                "lines"
+            return (
+                SalesOrderListSerializer
             )
 
-            validate_sales_order(
-                order_data=serializer.validated_data,
-                lines_data=lines_data,
+        if self.action == "retrieve":
+
+            return (
+                SalesOrderDetailSerializer
             )
 
-            order = serializer.save()
+        return (
+            SalesOrderCreateUpdateSerializer
+        )
 
-            log_activity(
-                user=self.request.user,
-                action="CREATE",
-                module="SalesOrder",
-                reference_id=order.id,
-                description="Sales order created",
-                ip_address=self.request.META.get(
-                    "REMOTE_ADDR"
-                ),
-            )
-
-
-    # --------------------------------------------------
-    # UPDATE ORDER
-    # --------------------------------------------------
-
-    def perform_update(self, serializer):
-
-        with transaction.atomic():
-
-            lines_data = serializer.validated_data.get(
-                "lines",
-                []
-            )
-
-            validate_sales_order(
-                order_data=serializer.validated_data,
-                lines_data=lines_data,
-            )
-
-            order = serializer.save()
-
-            log_activity(
-                user=self.request.user,
-                action="UPDATE",
-                module="SalesOrder",
-                reference_id=order.id,
-                description="Sales order updated",
-                ip_address=self.request.META.get(
-                    "REMOTE_ADDR"
-                ),
-            )
-
-
-    # --------------------------------------------------
+    # =================================================
     # STATUS ACTIONS
-    # --------------------------------------------------
-
-    @action(detail=True, methods=["post"])
-    def confirm(self, request, pk=None):
-
-        order = self.get_object()
-
-        if order.status != "DRAFT":
-
-            raise ValidationError(
-                "Only draft orders can be confirmed."
-            )
-
-        order.status = "CONFIRMED"
-
-        order.save()
-
-        log_activity(
-            user=request.user,
-            action="STATUS_CHANGE",
-            module="SalesOrder",
-            reference_id=order.id,
-            description="Order confirmed",
-            ip_address=request.META.get(
-                "REMOTE_ADDR"
-            ),
-        )
-
-        return Response(
-            {"status": "confirmed"},
-            status=status.HTTP_200_OK,
-        )
-
-
-    @action(detail=True, methods=["post"])
-    def hold(self, request, pk=None):
-
-        order = self.get_object()
-
-        if order.status not in [
-            "CONFIRMED",
-            "IN_PROGRESS",
-        ]:
-
-            raise ValidationError(
-                "Only active orders can be placed on hold."
-            )
-
-        order.status = "ON_HOLD"
-
-        order.save()
-
-        log_activity(
-            user=request.user,
-            action="STATUS_CHANGE",
-            module="SalesOrder",
-            reference_id=order.id,
-            description="Order placed on hold",
-            ip_address=request.META.get(
-                "REMOTE_ADDR"
-            ),
-        )
-
-        return Response(
-            {"status": "on_hold"},
-            status=status.HTTP_200_OK,
-        )
-
-    @action(
-    detail=True,
-    methods=["post"]
-    )
-    def resume(
-        self,
-        request,
-        pk=None
-    ):
-
-        order = self.get_object()
-
-        order.status = "DRAFT"
-
-        order.save()
-
-        return Response(
-            {
-                "message":
-                "Sales order resumed"
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-    @action(detail=True, methods=["post"])
-    def cancel(self, request, pk=None):
-
-        order = self.get_object()
-
-        if order.status == "CLOSED":
-
-            raise ValidationError(
-                "Closed orders cannot be cancelled."
-            )
-
-        order.status = "CANCELLED"
-
-        order.save()
-
-        log_activity(
-            user=request.user,
-            action="STATUS_CHANGE",
-            module="SalesOrder",
-            reference_id=order.id,
-            description="Order cancelled",
-            ip_address=request.META.get(
-                "REMOTE_ADDR"
-            ),
-        )
-
-        return Response(
-            {"status": "cancelled"},
-            status=status.HTTP_200_OK,
-        )
-    
-
+    # =================================================
 
     @action(
         detail=True,
@@ -242,22 +82,30 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
 
         order = self.get_object()
 
+        if order.status != "DRAFT":
+
+            return Response({
+
+                "detail":
+                    "Only draft orders "
+                    "can be confirmed."
+            }, status=400)
+
         order.status = "CONFIRMED"
 
-        order.save()
-
-        return Response(
-            {
-                "message":
-                "Sales order confirmed"
-            },
-            status=status.HTTP_200_OK
+        order.save(
+            update_fields=["status"]
         )
-    
+
+        return Response({
+
+            "detail":
+                "Sales order confirmed."
+        })
 
     @action(
-    detail=True,
-    methods=["post"]
+        detail=True,
+        methods=["post"]
     )
     def hold(
         self,
@@ -267,18 +115,32 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
 
         order = self.get_object()
 
-        order.status = "HOLD"
+        if order.status in [
 
-        order.save()
+            "CANCELLED",
 
-        return Response(
-            {
-                "message":
-                "Sales order placed on hold"
-            },
-            status=status.HTTP_200_OK
+            "CLOSED"
+        ]:
+
+            return Response({
+
+                "detail":
+                    "Closed or cancelled "
+                    "orders cannot be "
+                    "put on hold."
+            }, status=400)
+
+        order.status = "ON_HOLD"
+
+        order.save(
+            update_fields=["status"]
         )
-    
+
+        return Response({
+
+            "detail":
+                "Sales order put on hold."
+        })
 
     @action(
         detail=True,
@@ -292,14 +154,135 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
 
         order = self.get_object()
 
+        if order.status == "DISPATCHED":
+
+            return Response({
+
+                "detail":
+                    "Dispatched orders "
+                    "cannot be cancelled."
+            }, status=400)
+
         order.status = "CANCELLED"
 
-        order.save()
-
-        return Response(
-            {
-                "message":
-                "Sales order cancelled"
-            },
-            status=status.HTTP_200_OK
+        order.save(
+            update_fields=["status"]
         )
+
+        return Response({
+
+            "detail":
+                "Sales order cancelled."
+        })
+
+    @action(
+        detail=True,
+        methods=["post"]
+    )
+    def mark_in_production(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        if order.status != "CONFIRMED":
+
+            return Response({
+
+                "detail":
+                    "Only confirmed orders "
+                    "can move to production."
+            }, status=400)
+
+        order.status = (
+            "IN_PRODUCTION"
+        )
+
+        order.save(
+            update_fields=["status"]
+        )
+
+        return Response({
+
+            "detail":
+                "Sales order moved to "
+                "production."
+        })
+
+    @action(
+        detail=True,
+        methods=["post"]
+    )
+    def mark_qc_pending(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        if order.status != (
+            "IN_PRODUCTION"
+        ):
+
+            return Response({
+
+                "detail":
+                    "Only production orders "
+                    "can move to QC."
+            }, status=400)
+
+        order.status = (
+            "QC_PENDING"
+        )
+
+        order.save(
+            update_fields=["status"]
+        )
+
+        return Response({
+
+            "detail":
+                "Sales order moved to QC."
+        })
+
+    @action(
+        detail=True,
+        methods=["post"]
+    )
+    def mark_ready_dispatch(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        if order.status != (
+            "QC_PENDING"
+        ):
+
+            return Response({
+
+                "detail":
+                    "Only QC-completed orders "
+                    "can be marked ready "
+                    "for dispatch."
+            }, status=400)
+
+        order.status = (
+            "READY_TO_DISPATCH"
+        )
+
+        order.save(
+            update_fields=["status"]
+        )
+
+        return Response({
+
+            "detail":
+                "Sales order ready "
+                "for dispatch."
+        })

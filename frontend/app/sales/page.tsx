@@ -1,21 +1,27 @@
+import Link from "next/link"
+
 import {
 
   getSalesOrders,
 
-} from "@/lib/api/sales"
-
-import StatusBadge
-from "@/components/ui/status-badge"
+} from "@/lib/api/sales-server"
 
 export default async function
-SalesOrdersPage() {
+SalesPage() {
 
   const salesOrders =
     await getSalesOrders()
 
   return (
 
-    <div className="p-8 text-white">
+    <div
+      className="
+        p-8
+        text-white
+      "
+    >
+
+      {/* HEADER */}
 
       <div
         className="
@@ -26,37 +32,59 @@ SalesOrdersPage() {
         "
       >
 
-        <h1
-          className="
-            text-3xl
-            font-bold
-          "
-        >
-          Sales Orders
-        </h1>
+        <div>
 
-        <a
+          <h1
+            className="
+              text-3xl
+              font-bold
+            "
+          >
+            Sales Orders
+          </h1>
+
+          <p
+            className="
+              text-zinc-400
+              mt-2
+            "
+          >
+            Sales lifecycle,
+            delivery tracking and
+            dispatch orchestration.
+          </p>
+
+        </div>
+
+        <Link
+
           href="/sales/create"
 
           className="
             bg-white
+            hover:bg-zinc-200
+            transition
             text-black
-            px-4
-            py-2
-            rounded-lg
+            px-5
+            py-3
+            rounded-xl
+            font-medium
           "
         >
-          Create Order
-        </a>
+          Create Sales Order
+        </Link>
 
       </div>
+
+      {/* TABLE */}
 
       <div
         className="
           border
           border-zinc-800
-          rounded-xl
+          rounded-2xl
           overflow-hidden
+          bg-zinc-900/40
         "
       >
 
@@ -70,24 +98,95 @@ SalesOrdersPage() {
 
             <tr>
 
-              <th className="p-4 text-left">
-                Order No
+              <th
+                className="
+                  px-4
+                  py-4
+                  text-left
+                  text-sm
+                  text-zinc-400
+                  font-medium
+                "
+              >
+                SO Number
               </th>
 
-              <th className="p-4 text-left">
+              <th
+                className="
+                  px-4
+                  py-4
+                  text-left
+                  text-sm
+                  text-zinc-400
+                  font-medium
+                "
+              >
                 Customer
               </th>
 
-              <th className="p-4 text-left">
+              <th
+                className="
+                  px-4
+                  py-4
+                  text-left
+                  text-sm
+                  text-zinc-400
+                  font-medium
+                "
+              >
+                Order Date
+              </th>
+
+              <th
+                className="
+                  px-4
+                  py-4
+                  text-left
+                  text-sm
+                  text-zinc-400
+                  font-medium
+                "
+              >
+                Expected Delivery
+              </th>
+
+              <th
+                className="
+                  px-4
+                  py-4
+                  text-left
+                  text-sm
+                  text-zinc-400
+                  font-medium
+                "
+              >
+                Remaining Days
+              </th>
+
+              <th
+                className="
+                  px-4
+                  py-4
+                  text-left
+                  text-sm
+                  text-zinc-400
+                  font-medium
+                "
+              >
                 Status
               </th>
 
-              <th className="p-4 text-left">
+              <th
+                className="
+                  px-4
+                  py-4
+                  text-right
+                  text-sm
+                  text-zinc-400
+                  font-medium
+                "
+              >
                 Total
-              </th>
-
-              <th className="p-4 text-left">
-                Order Date
               </th>
 
             </tr>
@@ -101,57 +200,200 @@ SalesOrdersPage() {
                 (order: any) => (
 
                   <tr
+
                     key={order.id}
 
                     className="
                       border-t
                       border-zinc-800
+                      hover:bg-zinc-900/50
+                      transition
                     "
                   >
 
-                    <td className="p-4">
+                    {/* SO NUMBER */}
 
-                      <a
-                        href={`/sales/${order.id}`}
+                    <td
+                      className="
+                        px-4
+                        py-4
+                      "
+                    >
+
+                      <Link
+
+                        href={
+                          `/sales/${order.id}`
+                        }
 
                         className="
                           text-blue-400
+                          hover:text-blue-300
+                          font-medium
                         "
                       >
+
                         {
                           order.order_number
                         }
-                      </a>
+
+                      </Link>
 
                     </td>
 
-                    <td className="p-4">
+                    {/* CUSTOMER */}
+
+                    <td
+                      className="
+                        px-4
+                        py-4
+                        text-white
+                      "
+                    >
+
                       {
                         order.customer_name
                       }
-                    </td>
-
-                    <td className="p-4">
-
-                      <StatusBadge
-                        status={order.status}
-                      />
 
                     </td>
 
-                    <td className="p-4">
+                    {/* ORDER DATE */}
+
+                    <td
+                      className="
+                        px-4
+                        py-4
+                        text-zinc-300
+                      "
+                    >
+
+                      {
+                        order.order_date
+                      }
+
+                    </td>
+
+                    {/* DELIVERY */}
+
+                    <td
+                      className="
+                        px-4
+                        py-4
+                        text-zinc-300
+                      "
+                    >
+
+                      {
+                        order.expected_delivery_date
+                      }
+
+                    </td>
+
+                    {/* REMAINING */}
+
+                    <td
+                      className="
+                        px-4
+                        py-4
+                      "
+                    >
+
+                      <span
+                        className={
+
+                          order.remaining_days < 0
+
+                          ?
+
+                          `
+                          text-red-400
+                          font-medium
+                          `
+
+                          :
+
+                          order.remaining_days <= 3
+
+                          ?
+
+                          `
+                          text-yellow-400
+                          font-medium
+                          `
+
+                          :
+
+                          `
+                          text-green-400
+                          font-medium
+                          `
+                        }
+                      >
+
+                        {
+                          order.remaining_days
+                        }
+
+                        {
+                          order.remaining_days !== null
+                          &&
+                          " days"
+                        }
+
+                      </span>
+
+                    </td>
+
+                    {/* STATUS */}
+
+                    <td
+                      className="
+                        px-4
+                        py-4
+                      "
+                    >
+
+                      <span
+                        className="
+                          px-3
+                          py-1
+                          rounded-full
+                          text-xs
+                          font-medium
+                          bg-zinc-800
+                          text-zinc-200
+                        "
+                      >
+
+                        {
+                          order.status
+                            .replaceAll(
+                              "_",
+                              " "
+                            )
+                        }
+
+                      </span>
+
+                    </td>
+
+                    {/* TOTAL */}
+
+                    <td
+                      className="
+                        px-4
+                        py-4
+                        text-right
+                        text-white
+                        font-medium
+                      "
+                    >
 
                       ₹
                       {
                         order.total_amount
                       }
 
-                    </td>
-
-                    <td className="p-4">
-                      {
-                        order.order_date
-                      }
                     </td>
 
                   </tr>
