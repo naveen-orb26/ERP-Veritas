@@ -134,6 +134,7 @@ class SalesOrderCreateUpdateSerializer(
             "total_amount",
             "remarks",
             "lines",
+            "delivery_lead_days",
         ]
 
     # -----------------------------------------------------
@@ -144,14 +145,31 @@ class SalesOrderCreateUpdateSerializer(
 
         lines_data = validated_data.pop("lines")
 
+        request = self.context.get(
+    "request"
+)
+
         order = SalesOrder.objects.create(
+            created_by=request.user,
             **validated_data
         )
 
         for line in lines_data:
 
+            quantity = line["quantity"]
+
+            unit_price = line["unit_price"]
+
+            line_total = (
+                quantity *
+                unit_price
+            )
+
             SalesOrderLine.objects.create(
                 sales_order=order,
+
+                line_total=line_total,
+
                 **line
             )
 
@@ -191,6 +209,23 @@ class SalesOrderCreateUpdateSerializer(
             instance.lines.all().delete()
 
             for line in lines_data:
+
+                quantity = line["quantity"]
+
+                unit_price = line["unit_price"]
+
+                line_total = (
+                    quantity *
+                    unit_price
+                )
+
+                SalesOrderLine.objects.create(
+                    sales_order=order,
+
+                    line_total=line_total,
+
+                    **line
+                )
 
                 SalesOrderLine.objects.create(
                     sales_order=instance,

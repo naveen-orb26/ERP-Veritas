@@ -75,5 +75,18 @@ class Product(models.Model):
         help_text="Timestamp when the product was created"
     )
 
+    hsn_code = models.CharField(
+    max_length=20,
+    blank=True,
+    help_text="HSN/SAC classification code"
+    )
+
+    gst_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=18.00,
+        help_text="Default GST percentage for this product"
+    )
+
     def __str__(self):
         return f"{self.sr_number} - {self.product_name}"

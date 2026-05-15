@@ -94,5 +94,7 @@ urlpatterns = [
     path("api/reports/production-dispatch/", ProductionDispatchBalanceView.as_view()),
     path("api/reports/daily-production/", DailyProductionReportView.as_view()),
     path("api/dashboard/", include("dashboard.urls"),),
-    path("api/auth/",include("authentication.urls"),),
+    path("api/auth/", include("authentication.urls"),),
+    path("api/", include("customers.urls"),),
+    path("api/", include("product_master.urls"),),
 ]

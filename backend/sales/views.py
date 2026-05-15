@@ -16,6 +16,10 @@ from .serializers import (
 
 from .services import validate_sales_order
 
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
+
 
 class SalesOrderViewSet(viewsets.ModelViewSet):
 
@@ -168,6 +172,30 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @action(
+    detail=True,
+    methods=["post"]
+    )
+    def resume(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        order.status = "DRAFT"
+
+        order.save()
+
+        return Response(
+            {
+                "message":
+                "Sales order resumed"
+            },
+            status=status.HTTP_200_OK
+        )
+
 
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
@@ -198,4 +226,80 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
         return Response(
             {"status": "cancelled"},
             status=status.HTTP_200_OK,
+        )
+    
+
+
+    @action(
+        detail=True,
+        methods=["post"]
+    )
+    def confirm(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        order.status = "CONFIRMED"
+
+        order.save()
+
+        return Response(
+            {
+                "message":
+                "Sales order confirmed"
+            },
+            status=status.HTTP_200_OK
+        )
+    
+
+    @action(
+    detail=True,
+    methods=["post"]
+    )
+    def hold(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        order.status = "HOLD"
+
+        order.save()
+
+        return Response(
+            {
+                "message":
+                "Sales order placed on hold"
+            },
+            status=status.HTTP_200_OK
+        )
+    
+
+    @action(
+        detail=True,
+        methods=["post"]
+    )
+    def cancel(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        order.status = "CANCELLED"
+
+        order.save()
+
+        return Response(
+            {
+                "message":
+                "Sales order cancelled"
+            },
+            status=status.HTTP_200_OK
         )

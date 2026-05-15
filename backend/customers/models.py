@@ -1,4 +1,25 @@
+
 from django.db import models
+
+# =====================================================
+# CUSTOMER TYPES
+# =====================================================
+CUSTOMER_TYPE_CHOICES = [
+
+        ("RETAIL", "Retail"),
+
+        ("WHOLESALE", "Wholesale"),
+
+        ("DISTRIBUTOR", "Distributor"),
+
+        ("OEM", "OEM"),
+
+        ("EXPORT", "Export"),
+
+        ("INSTITUTIONAL", "Institutional"),
+        
+        ("OTHERS", "Others"),
+    ]
 
 
 class Customer(models.Model):
@@ -7,10 +28,10 @@ class Customer(models.Model):
     Represents a business entity we sell to.
     """
 
-    vendor_id = models.CharField(
-        max_length=4,
+    customer_code = models.CharField(
+        max_length=20,
         unique=True,
-        help_text="4-digit business identifier for the customer"
+        help_text="Unique business identifier for the customer"
     )
 
     name = models.CharField(
@@ -29,7 +50,7 @@ class Customer(models.Model):
     )
 
     def __str__(self):
-        return f"{self.vendor_id} - {self.name}"
+        return f"{self.customer_code} - {self.name}"
 
     billing_address = models.TextField(
         help_text="Billing address used for invoices"
@@ -44,6 +65,11 @@ class Customer(models.Model):
 
     shipping_address = models.TextField(
         help_text="Shipping address used for dispatch"
+    )
+
+    state = models.CharField(
+        max_length=100,
+        help_text="Customer state for GST determination"
     )
 
     shipping_gst_number = models.CharField(
@@ -69,3 +95,17 @@ class Customer(models.Model):
         blank=True,
         help_text="Default credit terms (e.g., Advance, 30 days)"
     )
+
+    pan_number = models.CharField(
+    max_length=10,
+    blank=True,
+    help_text="Customer PAN number"
+    )
+    
+    customer_type = models.CharField(
+    max_length=50,
+    choices=CUSTOMER_TYPE_CHOICES,
+    blank=True,
+    help_text="Customer classification"
+    )
+    

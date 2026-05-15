@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from customers.models import Customer
 from product_master.models import Product
 from users.models import User
-
+from datetime import timedelta
 
 class SalesOrder(models.Model):
 
@@ -27,6 +27,12 @@ class SalesOrder(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.PROTECT)
 
     order_date = models.DateField()
+
+    delivery_lead_days = models.PositiveIntegerField(
+    default=0,
+    help_text="Promised delivery lead time in days"
+    )
+    
     expected_delivery_date = models.DateField(null=True, blank=True)
 
     priority_flag = models.BooleanField(default=False)
@@ -86,7 +92,23 @@ class SalesOrder(models.Model):
 
         self.save(update_fields=["status"])
 
+    def save(self, *args, **kwargs):
 
+        if (
+            self.order_date and
+            self.delivery_lead_days is not None
+        ):
+
+            self.expected_delivery_date = (
+                self.order_date +
+                timedelta(
+                    days=self.delivery_lead_days
+                )
+            )
+
+        super().save(*args, **kwargs)
+
+        
 class SalesOrderLine(models.Model):  # product wise order from a single sales order
 
     sales_order = models.ForeignKey(

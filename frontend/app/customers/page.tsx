@@ -1,17 +1,12 @@
 import {
-
-  getSalesOrders,
-
-} from "@/lib/api/sales"
-
-import StatusBadge
-from "@/components/ui/status-badge"
+  getCustomers,
+} from "@/lib/api/customers"
 
 export default async function
-SalesOrdersPage() {
+CustomersPage() {
 
-  const salesOrders =
-    await getSalesOrders()
+  const customers =
+    await getCustomers()
 
   return (
 
@@ -32,11 +27,11 @@ SalesOrdersPage() {
             font-bold
           "
         >
-          Sales Orders
+          Customers
         </h1>
 
         <a
-          href="/sales/create"
+          href="/customers/create"
 
           className="
             bg-white
@@ -46,7 +41,7 @@ SalesOrdersPage() {
             rounded-lg
           "
         >
-          Create Order
+          Add Customer
         </a>
 
       </div>
@@ -71,23 +66,23 @@ SalesOrdersPage() {
             <tr>
 
               <th className="p-4 text-left">
-                Order No
+                Code
               </th>
 
               <th className="p-4 text-left">
-                Customer
+                Name
+              </th>
+
+              <th className="p-4 text-left">
+                State
+              </th>
+
+              <th className="p-4 text-left">
+                GSTIN
               </th>
 
               <th className="p-4 text-left">
                 Status
-              </th>
-
-              <th className="p-4 text-left">
-                Total
-              </th>
-
-              <th className="p-4 text-left">
-                Order Date
               </th>
 
             </tr>
@@ -97,11 +92,11 @@ SalesOrdersPage() {
           <tbody>
 
             {
-              salesOrders.map(
-                (order: any) => (
+              customers.map(
+                (customer: any) => (
 
                   <tr
-                    key={order.id}
+                    key={customer.id}
 
                     className="
                       border-t
@@ -112,14 +107,14 @@ SalesOrdersPage() {
                     <td className="p-4">
 
                       <a
-                        href={`/sales/${order.id}`}
+                        href={`/customers/${customer.id}`}
 
                         className="
                           text-blue-400
                         "
                       >
                         {
-                          order.order_number
+                          customer.customer_code
                         }
                       </a>
 
@@ -127,31 +122,51 @@ SalesOrdersPage() {
 
                     <td className="p-4">
                       {
-                        order.customer_name
+                        customer.name
                       }
-                    </td>
-
-                    <td className="p-4">
-
-                      <StatusBadge
-                        status={order.status}
-                      />
-
-                    </td>
-
-                    <td className="p-4">
-
-                      ₹
-                      {
-                        order.total_amount
-                      }
-
                     </td>
 
                     <td className="p-4">
                       {
-                        order.order_date
+                        customer.state
                       }
+                    </td>
+
+                    <td className="p-4">
+                      {
+                        customer
+                        .billing_gst_number
+                          || "-"
+                      }
+                    </td>
+
+                    <td className="p-4">
+
+                      <span
+                        className={
+
+                          customer.is_active
+
+                            ? `
+                                text-green-400
+                                font-medium
+                              `
+
+                            : `
+                                text-red-400
+                                font-medium
+                              `
+                        }
+                      >
+
+                        {
+                          customer.is_active
+                            ? "Active"
+                            : "Inactive"
+                        }
+
+                      </span>
+
                     </td>
 
                   </tr>
