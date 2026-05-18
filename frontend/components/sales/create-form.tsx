@@ -516,7 +516,7 @@ CreateSalesForm({
 
   async function
   handleSubmit(
-    e: React.FormEvent
+    e: React.FormEvent<HTMLFormElement>
   ) {
 
     e.preventDefault()
