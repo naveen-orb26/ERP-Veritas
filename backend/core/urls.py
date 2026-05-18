@@ -50,11 +50,21 @@ from reporting.views import (
     DailyProductionReportView,
 )
 
+from raw_materials.views import (RawMaterialViewSet)
+
 from django.urls import path, include
 
 from django.conf import settings
 
 from django.conf.urls.static import static
+
+from recipes.views import (
+    RecipeViewSet
+)
+
+from sampling.views import (
+    DevelopmentSampleViewSet
+)
 
 
 router = DefaultRouter()
@@ -79,8 +89,10 @@ router.register(r"purchase-invoices", PurchaseInvoiceViewSet, basename="purchase
 router.register(r"grn", GRNViewSet, basename="grn")
 router.register(r"raw-stock", RawStockMovementViewSet, basename="raw-stock-movement")
 
+router.register(r"raw-materials", RawMaterialViewSet,)
+router.register(r"recipes",RecipeViewSet,)
 
-
+router.register(r"development-samples",DevelopmentSampleViewSet,)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -102,6 +114,8 @@ urlpatterns = [
     path("api/auth/", include("authentication.urls"),),
     path("api/", include("customers.urls"),),
     path("api/", include("product_master.urls"),),
+    path("api/",include("inventory.urls"),),
+    
 ]
 
 urlpatterns += static(

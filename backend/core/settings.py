@@ -71,6 +71,10 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework_simplejwt.token_blacklist",
     "authentication",
+    "inventory",
+    "raw_materials",
+    "sampling",
+    "recipes",
 ]
 AUTH_USER_MODEL = "users.User"
 

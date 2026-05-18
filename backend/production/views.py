@@ -11,7 +11,7 @@ from .serializers import ProductionSerializer
 
 from .services import validate_production
 
-from inventory.services import validate_raw_stock
+# from inventory.services import validate_raw_stock
 
 class ProductionViewSet(viewsets.ModelViewSet):
 

@@ -12,7 +12,7 @@ from finished_stock.models import FinishedStockPacket
 
 from .services import validate_dispatch
 
-from inventory.services import validate_finished_stock
+# from inventory.services import validate_finished_stock
 
 
 class DispatchViewSet(viewsets.ModelViewSet):
