@@ -1,38 +1,44 @@
 from django.db import models
 
-from sampling.models import DevelopmentSample
+from sampling.models import (
+    DevelopmentSample
+)
 
-from raw_materials.models import RawMaterial
+from raw_materials.models import (
+    RawMaterial
+)
 
-
-# =====================================================
-# RECIPE
-# =====================================================
 
 class Recipe(models.Model):
 
-    development_sample = models.OneToOneField(
+    development_sample = (
+        models.OneToOneField(
 
-        DevelopmentSample,
+            DevelopmentSample,
 
-        on_delete=models.CASCADE,
+            on_delete=models.CASCADE,
 
-        related_name="recipe"
+            related_name="recipe"
+        )
     )
 
-    is_active = models.BooleanField(
+    notes = models.TextField(
 
-        default=False
+        blank=True
     )
 
-    created_at = models.DateTimeField(
+    created_at = (
+        models.DateTimeField(
 
-        auto_now_add=True
+            auto_now_add=True
+        )
     )
 
-    updated_at = models.DateTimeField(
+    updated_at = (
+        models.DateTimeField(
 
-        auto_now=True
+            auto_now=True
+        )
     )
 
     def __str__(self):
@@ -41,76 +47,56 @@ class Recipe(models.Model):
             f"Recipe - "
             f"{self.development_sample.reference_code}"
         )
+    
+class RecipeItem(models.Model):
 
+    recipe = models.ForeignKey(Recipe,on_delete=models.CASCADE, related_name="items")
 
-# =====================================================
-# RECIPE LINE
-# =====================================================
+    raw_material = (
+        models.ForeignKey(
 
-class RecipeLine(models.Model):
+            RawMaterial,
 
-    UNIT_CHOICES = [
+            on_delete=models.PROTECT,
 
-        ("KG", "Kilogram"),
-
-        ("GRAM", "Gram"),
-
-        ("LITRE", "Litre"),
-
-        ("ML", "Millilitre"),
-
-        ("PIECE", "Piece"),
-    ]
-
-    recipe = models.ForeignKey(
-
-        Recipe,
-
-        on_delete=models.CASCADE,
-
-        related_name="recipe_lines"
-    )
-
-    raw_material = models.ForeignKey(
-
-        RawMaterial,
-
-        on_delete=models.PROTECT
+            related_name="recipe_items"
+        )
     )
 
     quantity = models.DecimalField(
 
-        max_digits=18,
+        max_digits=12,
 
-        decimal_places=4
+        decimal_places=3
     )
 
     unit = models.CharField(
 
-        max_length=20,
-
-        choices=UNIT_CHOICES
+        max_length=20
     )
 
-    is_scaling_reference = models.BooleanField(
+    remarks = models.CharField(
 
-        default=False
-    )
-
-    remarks = models.TextField(
+        max_length=255,
 
         blank=True
     )
 
-    created_at = models.DateTimeField(
+    created_at = (
+        models.DateTimeField(
 
-        auto_now_add=True
+            auto_now_add=True
+        )
     )
 
     def __str__(self):
 
         return (
-            f"{self.recipe.development_sample.reference_code}"
-            f" | "
+
             f"{self.raw_material.material_name}"
+            f" - "
+            f"{self.quantity}"
+            f" {self.unit}"
         )
+    
+    

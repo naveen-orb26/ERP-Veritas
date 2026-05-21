@@ -2,7 +2,14 @@ from django.shortcuts import render
 
 from rest_framework import viewsets
 
-from .models import RawMaterial
+from .models import (
+
+    RawMaterial,
+
+    MaterialSource,
+
+    RawMaterialInventory,
+)
 
 from .serializers import (
 
@@ -11,8 +18,44 @@ from .serializers import (
     RawMaterialDetailSerializer,
 
     RawMaterialCreateUpdateSerializer,
-)
 
+    MaterialSourceSerializer,
+
+    RawMaterialInventorySerializer,
+)
+# =====================================================
+# MATERIAL SOURCE VIEWSET
+# =====================================================
+
+class MaterialSourceViewSet(
+
+    viewsets.ModelViewSet
+):
+
+    queryset = (
+
+        MaterialSource.objects
+
+        .select_related(
+
+            "raw_material",
+
+            "vendor"
+        )
+
+        .order_by(
+            "sm_code"
+        )
+    )
+
+    serializer_class = (
+        MaterialSourceSerializer
+    )
+
+
+# =====================================================
+# RAW MATERIAL INVENTORY VIEWSET
+# =====================================================
 
 class RawMaterialViewSet(
 
@@ -20,8 +63,10 @@ class RawMaterialViewSet(
 ):
 
     queryset = (
-        RawMaterial.objects.all()
-        .order_by("-id")
+        RawMaterial.objects
+        .order_by(
+            "material_name"
+        )
     )
 
     def get_serializer_class(self):
@@ -32,19 +77,46 @@ class RawMaterialViewSet(
                 RawMaterialListSerializer
             )
 
-        if self.action in [
-
-            "create",
-
-            "update",
-
-            "partial_update",
-        ]:
+        if self.action == "retrieve":
 
             return (
-                RawMaterialCreateUpdateSerializer
+                RawMaterialDetailSerializer
             )
 
         return (
-            RawMaterialDetailSerializer
+            RawMaterialCreateUpdateSerializer
         )
+    
+
+# =====================================================
+# RAW MATERIAL INVENTORY VIEWSET
+# =====================================================
+
+class RawMaterialInventoryViewSet(
+
+    viewsets.ReadOnlyModelViewSet
+):
+
+    queryset = (
+
+        RawMaterialInventory.objects
+
+        .select_related(
+
+            "warehouse",
+
+            "material_source",
+
+            "material_source__raw_material",
+
+            "material_source__vendor",
+        )
+
+        .order_by(
+            "material_source__sm_code"
+        )
+    )
+
+    serializer_class = (
+        RawMaterialInventorySerializer
+    )

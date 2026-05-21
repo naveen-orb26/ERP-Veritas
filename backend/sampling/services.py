@@ -8,14 +8,11 @@ from product_master.models import Product
 
 from recipes.models import Recipe
 
-from recipes.services import (
-
-    activate_recipe,
-)
-
 from .models import DevelopmentSample
 
-
+from recipes.models import (
+    Recipe
+)
 # =====================================================
 # GENERATE REFERENCE CODE
 # =====================================================
@@ -74,99 +71,122 @@ def generate_reference_code(mid_code):
 # =====================================================
 
 @transaction.atomic
+
 def approve_development_sample(
-
-    development_sample,
-
-    sr_number,
+    development_sample
 ):
+
+    # ================================
+    # VALIDATION
+    # ================================
 
     if (
         development_sample.status
-        == "APPROVED"
+        ==
+        DevelopmentSample
+        .STATUS_APPROVED
     ):
 
         raise ValidationError(
-            "Development sample "
-            "already approved."
+            "Sample already approved."
         )
 
-    recipe = getattr(
+    # ================================
+    # APPROVE
+    # ================================
+    # ==========================================
+    # RECIPE VALIDATION
+    # ==========================================
 
-        development_sample,
+    try:
 
-        "recipe",
+        recipe = (
+            development_sample.recipe
+        )
 
-        None
-    )
+    except Recipe.DoesNotExist:
 
-    if recipe:
+        raise ValidationError(
 
-        activate_recipe(recipe)
+            "Please add recipe before approval."
+        )
 
-    product = Product.objects.create(
+    if not recipe.items.exists():
 
-        sr_number=sr_number,
+        raise ValueError(
 
-        product_name=
-            development_sample.product_name,
-
-        description=
-            development_sample.description,
-
-        category=
-            development_sample.category,
-
-        size_or_variant=
-            development_sample.size_or_variant,
-
-        color=
-            development_sample.color,
-
-        base_unit=
-            development_sample.base_unit,
-
-        units_per_base_unit=
-            development_sample.units_per_base_unit,
-
-        default_units_per_packet=1,
-
-        is_active=True,
-    )
-
+            "Recipe must contain at least one ingredient."
+        )
     development_sample.status = (
-        "APPROVED"
-    )
 
-    development_sample.is_active = (
-        True
+        DevelopmentSample
+        .STATUS_APPROVED    
     )
 
     development_sample.approved_at = (
         timezone.now()
     )
 
+    development_sample.rejected_at = None
+
     development_sample.save()
 
-    return product
-
+    return development_sample
 
 # =====================================================
 # REJECT DEVELOPMENT SAMPLE
 # =====================================================
 
 @transaction.atomic
-def reject_development_sample(
 
+
+
+def reject_development_sample(
     development_sample
 ):
 
+    if (
+        development_sample.status
+        ==
+        DevelopmentSample
+        .STATUS_APPROVED
+    ):
+
+        raise ValueError(
+            "Approved samples cannot be rejected."
+        )
+
+    # ================================
+    # VALIDATION
+    # ================================
+
+    if (
+        development_sample.status
+        ==
+        DevelopmentSample
+        .STATUS_REJECTED
+    ):
+
+        raise ValueError(
+            "Sample already rejected."
+        )
+
+    # ================================
+    # REJECT
+    # ================================
+
     development_sample.status = (
-        "REJECTED"
+
+        DevelopmentSample
+        .STATUS_REJECTED
     )
 
-    development_sample.is_active = (
-        False
+    development_sample.rejected_at = (
+        timezone.now()
     )
+
+    development_sample.approved_at = None
 
     development_sample.save()
+
+    return development_sample

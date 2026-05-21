@@ -1,23 +1,28 @@
+from django.db import transaction
+
 from rest_framework import serializers
 
 from .models import (
 
     Recipe,
 
-    RecipeLine,
+    RecipeItem,
 )
 
 from .services import (
+    validate_recipe
+)
 
-    validate_recipe,
+from sampling.models import (
+    DevelopmentSample
 )
 
 
 # =====================================================
-# RECIPE LINE
+# RECIPE ITEM
 # =====================================================
 
-class RecipeLineSerializer(
+class RecipeItemSerializer(
 
     serializers.ModelSerializer
 ):
@@ -33,7 +38,7 @@ class RecipeLineSerializer(
 
     class Meta:
 
-        model = RecipeLine
+        model = RecipeItem
 
         fields = [
 
@@ -47,11 +52,8 @@ class RecipeLineSerializer(
 
             "unit",
 
-            "is_scaling_reference",
-
             "remarks",
         ]
-
 
 # =====================================================
 # RECIPE LIST
@@ -84,13 +86,10 @@ class RecipeListSerializer(
 
             "development_reference",
 
-            "is_active",
-
             "created_at",
         ]
 
-
-# =====================================================
+        # =====================================================
 # RECIPE DETAIL
 # =====================================================
 
@@ -99,8 +98,8 @@ class RecipeDetailSerializer(
     serializers.ModelSerializer
 ):
 
-    recipe_lines = (
-        RecipeLineSerializer(
+    items = (
+        RecipeItemSerializer(
 
             many=True,
 
@@ -132,15 +131,14 @@ class RecipeDetailSerializer(
 
             "development_reference",
 
-            "is_active",
+            "notes",
 
-            "recipe_lines",
+            "items",
 
             "created_at",
 
             "updated_at",
         ]
-
 
 # =====================================================
 # RECIPE CREATE / UPDATE
@@ -151,9 +149,8 @@ class RecipeCreateUpdateSerializer(
     serializers.ModelSerializer
 ):
 
-    recipe_lines = (
-        RecipeLineSerializer(
-
+    items = (
+        RecipeItemSerializer(
             many=True
         )
     )
@@ -168,39 +165,69 @@ class RecipeCreateUpdateSerializer(
 
             "development_sample",
 
-            "is_active",
+            "notes",
 
-            "recipe_lines",
+            "items",
         ]
 
-    def create(self, validated_data):
 
-        recipe_lines_data = (
+    @transaction.atomic
+    def create(
+
+        self,
+
+        validated_data
+    ):
+
+        items_data = (
             validated_data.pop(
-                "recipe_lines"
+                "items"
             )
         )
+
+        development_sample = (
+            validated_data[
+                "development_sample"
+            ]
+        )
+
+        # =====================================
+        # IMMUTABLE APPROVED CHECK
+        # =====================================
+
+        if (
+
+            development_sample.status
+            ==
+            DevelopmentSample
+            .STATUS_APPROVED
+        ):
+
+            raise serializers.ValidationError(
+
+                "Approved samples "
+                "cannot create recipes."
+            )
 
         recipe = Recipe.objects.create(
 
             **validated_data
         )
 
-        for line_data in (
-            recipe_lines_data
-        ):
+        for item_data in items_data:
 
-            RecipeLine.objects.create(
+            RecipeItem.objects.create(
 
                 recipe=recipe,
 
-                **line_data
+                **item_data
             )
 
         validate_recipe(recipe)
 
         return recipe
-
+    
+    @transaction.atomic
     def update(
 
         self,
@@ -210,35 +237,59 @@ class RecipeCreateUpdateSerializer(
         validated_data
     ):
 
-        recipe_lines_data = (
+        development_sample = (
+            instance.development_sample
+        )
+
+        # =====================================
+        # IMMUTABLE APPROVED CHECK
+        # =====================================
+
+        if (
+
+            development_sample.status
+            ==
+            DevelopmentSample
+            .STATUS_APPROVED
+        ):
+
+            raise serializers.ValidationError(
+
+                "Approved sample recipes "
+                "cannot be edited."
+            )
+
+        items_data = (
             validated_data.pop(
-                "recipe_lines",
+                "items",
                 []
             )
         )
 
-        instance.is_active = (
+        instance.notes = (
             validated_data.get(
 
-                "is_active",
+                "notes",
 
-                instance.is_active
+                instance.notes
             )
         )
 
         instance.save()
 
-        instance.recipe_lines.all().delete()
+        # =====================================
+        # REPLACE RECIPE ITEMS
+        # =====================================
 
-        for line_data in (
-            recipe_lines_data
-        ):
+        instance.items.all().delete()
 
-            RecipeLine.objects.create(
+        for item_data in items_data:
+
+            RecipeItem.objects.create(
 
                 recipe=instance,
 
-                **line_data
+                **item_data
             )
 
         validate_recipe(instance)

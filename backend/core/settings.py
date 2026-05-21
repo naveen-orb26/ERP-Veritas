@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     "raw_materials",
     "sampling",
     "recipes",
+    "vendors",
+    "grn",
 ]
 AUTH_USER_MODEL = "users.User"
 

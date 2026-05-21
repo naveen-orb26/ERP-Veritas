@@ -1,8 +1,8 @@
-from django.shortcuts import render
-
 from rest_framework import viewsets
 
-from .models import Recipe
+from .models import (
+    Recipe
+)
 
 from .serializers import (
 
@@ -15,7 +15,6 @@ from .serializers import (
 
 
 class RecipeViewSet(
-
     viewsets.ModelViewSet
 ):
 
@@ -24,12 +23,15 @@ class RecipeViewSet(
         .order_by("-id")
     )
 
-    def get_serializer_class(self):
+    def get_serializer_class(
+
+        self
+    ):
 
         if self.action == "list":
 
             return (
-                RecipeListSerializer
+                RecipeDetailSerializer
             )
 
         if self.action in [
@@ -48,3 +50,25 @@ class RecipeViewSet(
         return (
             RecipeDetailSerializer
         )
+    def get_queryset(self):
+
+        queryset = (
+            super()
+            .get_queryset()
+        )
+
+        development_sample = (
+            self.request.query_params.get(
+                "development_sample"
+            )
+        )
+
+        if development_sample:
+
+            queryset = queryset.filter(
+
+                development_sample=
+                development_sample
+            )
+
+        return queryset

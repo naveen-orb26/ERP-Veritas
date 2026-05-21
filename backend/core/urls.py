@@ -62,9 +62,7 @@ from recipes.views import (
     RecipeViewSet
 )
 
-from sampling.views import (
-    DevelopmentSampleViewSet
-)
+from sampling.views import (DevelopmentSampleViewSet)
 
 
 router = DefaultRouter()
@@ -94,6 +92,7 @@ router.register(r"recipes",RecipeViewSet,)
 
 router.register(r"development-samples",DevelopmentSampleViewSet,)
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     # production routes
@@ -115,7 +114,11 @@ urlpatterns = [
     path("api/", include("customers.urls"),),
     path("api/", include("product_master.urls"),),
     path("api/",include("inventory.urls"),),
-    
+    path("api/",include("grn.urls")),
+    path("api/",include("vendors.urls")),
+    path("api/",include("raw_materials.urls")),
+    path("api/",include("vendors.urls")),
+    path("api/",include("grn.urls")),
 ]
 
 urlpatterns += static(

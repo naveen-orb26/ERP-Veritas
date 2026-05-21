@@ -23,6 +23,31 @@ class DevelopmentSample(models.Model):
         ("REJECTED", "Rejected"),
     ]
 
+    STATUS_DRAFT = "DRAFT"
+
+    STATUS_APPROVED = "APPROVED"
+
+    STATUS_REJECTED = "REJECTED"
+
+
+    STATUS_CHOICES = [
+
+        (
+            STATUS_DRAFT,
+            "Draft"
+        ),
+
+        (
+            STATUS_APPROVED,
+            "Approved"
+        ),
+
+        (
+            STATUS_REJECTED,
+            "Rejected"
+        ),
+    ]
+
     BASE_UNIT_CHOICES = [
 
         ("PCS", "Pieces"),
@@ -152,11 +177,25 @@ class DevelopmentSample(models.Model):
 
     status = models.CharField(
 
-        max_length=50,
+        max_length=20,
 
         choices=STATUS_CHOICES,
 
-        default="DRAFT"
+        default=STATUS_DRAFT,
+    )
+
+    approved_at = models.DateTimeField(
+
+        null=True,
+
+        blank=True
+    )
+
+    rejected_at = models.DateTimeField(
+
+        null=True,
+
+        blank=True
     )
 
     is_active = models.BooleanField(

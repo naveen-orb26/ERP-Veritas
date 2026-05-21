@@ -8,6 +8,8 @@ from rest_framework.decorators import action
 
 from rest_framework.response import Response
 
+from rest_framework.exceptions import ValidationError
+
 from .models import DevelopmentSample
 
 from .serializers import (
@@ -62,6 +64,56 @@ class DevelopmentSampleViewSet(
             DevelopmentSampleDetailSerializer
         )
 
+    def perform_update(
+
+        self,
+
+        serializer
+    ):
+
+        development_sample = (
+            self.get_object()
+        )
+
+        if (
+
+            development_sample.status
+            ==
+            DevelopmentSample
+            .STATUS_APPROVED
+        ):
+
+            raise ValidationError(
+
+                "Approved samples cannot be edited."
+            )
+
+        updated_sample = (
+            serializer.save()
+        )
+
+        # ============================
+        # REWORK LOGIC
+        # ============================
+
+        if (
+
+            development_sample.status
+            ==
+            DevelopmentSample
+            .STATUS_REJECTED
+        ):
+
+            updated_sample.status = (
+
+                DevelopmentSample
+                .STATUS_DRAFT
+            )
+
+            updated_sample.rejected_at = None
+
+            updated_sample.save()
+        
     # =================================================
     # APPROVE SAMPLE
     # =================================================
@@ -85,29 +137,12 @@ class DevelopmentSampleViewSet(
             self.get_object()
         )
 
-        sr_number = request.data.get(
-            "sr_number"
-        )
-
-        if not sr_number:
-
-            return Response(
-
-                {
-
-                    "error":
-                        "sr_number is required."
-                },
-
-                status=400
-            )
 
         product = (
             approve_development_sample(
 
                 development_sample,
 
-                sr_number
             )
         )
 
@@ -116,11 +151,8 @@ class DevelopmentSampleViewSet(
             "message":
                 "Development sample approved.",
 
-            "product_id":
-                product.id,
-
-            "sr_number":
-                product.sr_number,
+            "status":
+                development_sample.status,
         })
 
     # =================================================
