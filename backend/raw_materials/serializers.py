@@ -31,6 +31,8 @@ class RawMaterialListSerializer(
 
             "material_name",
 
+            "chemical_identity",
+
             "material_category",
 
             "base_unit",
@@ -74,6 +76,15 @@ class RawMaterialCreateUpdateSerializer(
 
         fields = "__all__"
 
+        read_only_fields = [
+
+            "material_code",
+
+            "created_at",
+
+            "updated_at",
+        ]
+
 
 # =====================================================
 # MATERIAL SOURCE
@@ -89,6 +100,16 @@ class MaterialSourceSerializer(
         source=(
             "raw_material"
             ".material_name"
+        ),
+
+        read_only=True
+    )
+
+    chemical_identity = serializers.CharField(
+
+        source=(
+            "raw_material"
+            ".chemical_identity"
         ),
 
         read_only=True
@@ -137,6 +158,8 @@ class MaterialSourceSerializer(
             "raw_material",
 
             "material_name",
+
+            "chemical_identity",
 
             "material_code",
 
@@ -188,6 +211,17 @@ class RawMaterialInventorySerializer(
         read_only=True
     )
 
+    chemical_identity = serializers.CharField(
+
+        source=(
+            "material_source"
+            ".raw_material"
+            ".chemical_identity"
+        ),
+
+        read_only=True
+    )
+
     material_code = serializers.CharField(
 
         source=(
@@ -220,6 +254,15 @@ class RawMaterialInventorySerializer(
         read_only=True
     )
 
+    available_quantity = serializers.DecimalField(
+
+        max_digits=18,
+
+        decimal_places=4,
+
+        read_only=True
+    )
+
     is_below_minimum = serializers.BooleanField(
 
         read_only=True
@@ -242,6 +285,8 @@ class RawMaterialInventorySerializer(
             "sm_code",
 
             "material_name",
+
+            "chemical_identity",
 
             "material_code",
 

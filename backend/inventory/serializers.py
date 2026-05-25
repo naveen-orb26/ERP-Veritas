@@ -4,9 +4,7 @@ from .models import (
 
     Warehouse,
 
-    InventoryStock,
-
-    StockLedger,
+      StockLedger,
 )
 
 
@@ -14,72 +12,28 @@ from .models import (
 # WAREHOUSE SERIALIZERS
 # =====================================================
 
+
 class WarehouseSerializer(
-    serializers.ModelSerializer
-):
 
-    class Meta:
+        serializers.ModelSerializer
+    ):
 
-        model = Warehouse
+        class Meta:
 
-        fields = "__all__"
+            model = Warehouse
 
+            fields = [
 
-# =====================================================
-# INVENTORY STOCK SERIALIZERS
-# =====================================================
+                "id",
 
-class InventoryStockSerializer(
-    serializers.ModelSerializer
-):
+                "warehouse_name",
 
-    product_name = serializers.CharField(
-        source="product.product_name",
-        read_only=True
-    )
+                "warehouse_code",
 
-    warehouse_name = serializers.CharField(
-        source="warehouse.warehouse_name",
-        read_only=True
-    )
+                "warehouse_type",
 
-    warehouse_code = serializers.CharField(
-        source="warehouse.warehouse_code",
-        read_only=True
-    )
-
-    class Meta:
-
-        model = InventoryStock
-
-        fields = [
-
-            "id",
-
-            "warehouse",
-
-            "warehouse_name",
-
-            "warehouse_code",
-
-            "product",
-
-            "product_name",
-
-            "current_quantity",
-
-            "reserved_quantity",
-
-            "available_quantity",
-
-            "reorder_level",
-
-            "last_movement_at",
-
-            "created_at",
-
-            "updated_at",
-        ]
+                "is_active",
+            ]
 
 
 # =====================================================
@@ -90,18 +44,77 @@ class StockLedgerSerializer(
     serializers.ModelSerializer
 ):
 
-    product_name = serializers.CharField(
-        source="product.product_name",
+    sm_code = serializers.CharField(
+
+        source=(
+            "material_source"
+            ".sm_code"
+        ),
+
+        read_only=True
+    )
+
+    material_name = serializers.CharField(
+
+        source=(
+            "material_source"
+            ".raw_material"
+            ".material_name"
+        ),
+
+        read_only=True
+    )
+
+    material_code = serializers.CharField(
+
+        source=(
+            "material_source"
+            ".raw_material"
+            ".material_code"
+        ),
+
+        read_only=True
+    )
+
+    chemical_identity = serializers.CharField(
+
+        source=(
+            "material_source"
+            ".raw_material"
+            ".chemical_identity"
+        ),
+
+        read_only=True
+    )
+
+    vendor_name = serializers.CharField(
+
+        source=(
+            "material_source"
+            ".vendor"
+            ".vendor_name"
+        ),
+
         read_only=True
     )
 
     warehouse_name = serializers.CharField(
-        source="warehouse.warehouse_name",
+
+        source=(
+            "warehouse"
+            ".warehouse_name"
+        ),
+
         read_only=True
     )
 
     created_by_name = serializers.CharField(
-        source="created_by.username",
+
+        source=(
+            "created_by"
+            ".username"
+        ),
+
         read_only=True
     )
 
@@ -117,9 +130,17 @@ class StockLedgerSerializer(
 
             "warehouse_name",
 
-            "product",
+            "material_source",
 
-            "product_name",
+            "sm_code",
+
+            "material_name",
+
+            "material_code",
+
+            "chemical_identity",
+
+            "vendor_name",
 
             "movement_type",
 
@@ -141,7 +162,6 @@ class StockLedgerSerializer(
 
             "created_at",
         ]
-
 
 # =====================================================
 # MANUAL STOCK MOVEMENT SERIALIZER

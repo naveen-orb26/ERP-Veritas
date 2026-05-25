@@ -15,6 +15,9 @@ from .models import (
     GRNLine,
 )
 
+from inventory.services import (
+    post_stock_movement
+)
 
 # =====================================================
 # APPLY GRN INVENTORY
@@ -69,7 +72,37 @@ def apply_grn_inventory(
 
         inventory.save()
 
+        post_stock_movement(
 
+        warehouse=
+            line.warehouse,
+
+        material_source=
+            line.material_source,
+
+        movement_type=
+            "PURCHASE_IN",
+
+        direction="IN",
+
+        quantity=
+            line.received_quantity,
+
+        created_by=
+            None,
+            # kept as None because auth is not fully complete now, later update to the default user who has logged in only.
+        reference_type="GRN",
+
+        reference_id=
+            grn.id,
+
+        remarks=(
+
+            f"GRN Receipt | "
+
+            f"{grn.grn_number}"
+        ),
+    )
 # =====================================================
 # REVERSE GRN INVENTORY
 # =====================================================
@@ -140,3 +173,35 @@ def reverse_grn_inventory(
         inventory.full_clean()
 
         inventory.save()
+
+        post_stock_movement(
+
+            warehouse=
+                line.warehouse,
+
+            material_source=
+                line.material_source,
+
+            movement_type=
+                "ADJUSTMENT_OUT",
+
+            direction="OUT",
+
+            quantity=
+                line.received_quantity,
+
+            created_by=
+                None,
+
+            reference_type="GRN_REVERSAL",
+
+            reference_id=
+                grn.id,
+
+            remarks=(
+
+                f"GRN Reversal | "
+
+                f"{grn.grn_number}"
+            ),
+        )

@@ -4,8 +4,6 @@ from .views import (
 
     WarehouseViewSet,
 
-    InventoryStockViewSet,
-
     StockLedgerViewSet,
 )
 
@@ -20,14 +18,7 @@ router.register(
     basename="warehouses"
 )
 
-router.register(
 
-    r"inventory-stocks",
-
-    InventoryStockViewSet,
-
-    basename="inventory-stocks"
-)
 
 router.register(
 

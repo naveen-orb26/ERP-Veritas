@@ -53,6 +53,12 @@ class RawMaterial(models.Model):
 
         max_length=255
     )
+    
+    chemical_identity = models.CharField(
+
+        max_length=100
+    )
+    
 
     material_category = models.CharField(
 
@@ -140,7 +146,115 @@ class RawMaterial(models.Model):
                 "cannot be less than "
                 "minimum quantity."
             )
+
+        duplicate_identity = (
+
+            RawMaterial.objects
+
+            .exclude(id=self.id)
+
+            .filter(
+
+                material_category=
+                    self.material_category,
+
+                chemical_identity__iexact=
+                    self.chemical_identity
+            )
+
+            .exists()
+        )
+
+        if duplicate_identity:
+
+            raise ValidationError(
+
+                "Raw material with this "
+
+                "chemical identity already "
+
+                "exists in this category."
+            )
         
+    
+    def save(self, *args, **kwargs):
+
+        if not self.material_code:
+
+            category_prefix_map = {
+
+                "CHEMICAL": "CHEM",
+
+                "PACKAGING": "PACK",
+
+                "CONSUMABLE": "CONS",
+
+                "GENERAL": "GEN",
+            }
+
+            prefix = (
+                category_prefix_map.get(
+                    self.material_category,
+                    "GEN"
+                )
+            )
+
+            identity = (
+
+                self.chemical_identity
+
+                .upper()
+
+                .replace(" ", "-")
+            )
+
+            last_material = (
+
+                RawMaterial.objects
+
+                .filter(
+                    material_category=
+                        self.material_category
+                )
+
+                .order_by("-id")
+
+                .first()
+            )
+
+            next_id = 1
+
+            if last_material:
+
+                try:
+
+                    next_id = (
+
+                        int(
+
+                            last_material
+                            .material_code
+                            .split("-")[-1]
+                        )
+                        + 1
+                    )
+
+                except Exception:
+
+                    next_id = 1
+
+            self.material_code = (
+
+                f"{prefix}-"
+
+                f"{identity}-"
+
+                f"{next_id:04d}"
+            )
+
+        super().save(*args, **kwargs)
+
+         
     def __str__(self):
 
         return (
@@ -148,6 +262,8 @@ class RawMaterial(models.Model):
             f"{self.material_name}"
         )
     
+    
+        
 # =====================================================
 # MATERIAL SOURCE (SM CODE)
 # =====================================================
@@ -246,37 +362,13 @@ class MaterialSource(models.Model):
 
         if not self.sm_code:
 
-            last_source = (
-                MaterialSource.objects
-                .order_by("-id")
-                .first()
-            )
-
-            next_id = 1
-
-            if last_source:
-
-                try:
-
-                    next_id = (
-
-                        int(
-
-                            last_source
-                            .sm_code
-                            .split("-")[1]
-                        )
-                        + 1
-                    )
-
-                except Exception:
-
-                    next_id = (
-                        self.id or 1
-                    )
-
             self.sm_code = (
-                f"SM-{next_id:05d}"
+
+                f"SM-"
+
+                f"{self.raw_material.material_code}-"
+
+                f"{self.vendor.vendor_code}"
             )
 
         super().save(*args, **kwargs)
@@ -372,6 +464,10 @@ class RawMaterialInventory(models.Model):
             "warehouse",
 
             "material_source",
+        )
+    
+        verbose_name_plural = (
+            "Raw Material Inventories"
         )
 
     def clean(self):

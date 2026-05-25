@@ -3,16 +3,16 @@ from "next/link"
 
 import {
 
-  getRawMaterialsServer,
+  getMaterialSourcesServer,
 
-} from "@/lib/api/raw-materials-server"
+} from "@/lib/api/material-sources-server"
 
 
 export default async function
-RawMaterialsPage() {
+MaterialSourcesPage() {
 
-  const rawMaterials =
-    await getRawMaterialsServer()
+  const materialSources =
+    await getMaterialSourcesServer()
 
   return (
 
@@ -42,7 +42,7 @@ RawMaterialsPage() {
               font-bold
             "
           >
-            Raw Materials
+            Material Sources
           </h1>
 
           <p
@@ -52,15 +52,16 @@ RawMaterialsPage() {
               text-zinc-500
             "
           >
-            Procurement and production
-            raw material master data
+            Vendor-linked procurement
+            source mapping for raw
+            materials
           </p>
 
         </div>
 
         <Link
 
-          href="/raw-materials/create"
+          href="/material-sources/create"
 
           className="
             inline-flex
@@ -78,7 +79,7 @@ RawMaterialsPage() {
             dark:text-black
           "
         >
-          Create Raw Material
+          Create Material Source
         </Link>
 
       </div>
@@ -127,7 +128,7 @@ RawMaterialsPage() {
                   text-zinc-500
                 "
               >
-                Material Code
+                SM Code
               </th>
 
               <th
@@ -142,7 +143,7 @@ RawMaterialsPage() {
                   text-zinc-500
                 "
               >
-                Material Name
+                Raw Material
               </th>
 
               <th
@@ -172,7 +173,7 @@ RawMaterialsPage() {
                   text-zinc-500
                 "
               >
-                Category
+                Vendor
               </th>
 
               <th
@@ -187,7 +188,7 @@ RawMaterialsPage() {
                   text-zinc-500
                 "
               >
-                Unit
+                Vendor Material Code
               </th>
 
               <th
@@ -218,12 +219,12 @@ RawMaterialsPage() {
 
           <tbody>
 
-            {rawMaterials.map(
-              (material: any) => (
+            {materialSources.map(
+              (source: any) => (
 
                 <tr
 
-                  key={material.id}
+                  key={source.id}
 
                   className="
                     border-b
@@ -241,7 +242,7 @@ RawMaterialsPage() {
                     "
                   >
                     {
-                      material.material_code
+                      source.sm_code
                     }
                   </td>
 
@@ -253,7 +254,7 @@ RawMaterialsPage() {
                     "
                   >
                     {
-                      material.material_name
+                      source.material_name
                     }
                   </td>
 
@@ -266,7 +267,7 @@ RawMaterialsPage() {
                     "
                   >
                     {
-                      material
+                      source
                       .chemical_identity
                     }
                   </td>
@@ -279,8 +280,7 @@ RawMaterialsPage() {
                     "
                   >
                     {
-                      material
-                      .material_category
+                      source.vendor_name
                     }
                   </td>
 
@@ -292,7 +292,9 @@ RawMaterialsPage() {
                     "
                   >
                     {
-                      material.base_unit
+                      source
+                      .vendor_material_code
+                      || "-"
                     }
                   </td>
 
@@ -315,7 +317,7 @@ RawMaterialsPage() {
                         border
 
                         ${
-                          material.is_active
+                          source.is_active
                             ? `
                               border-green-200
                               bg-green-50
@@ -336,7 +338,7 @@ RawMaterialsPage() {
                       `}
                     >
                       {
-                        material.is_active
+                        source.is_active
                           ? "Active"
                           : "Inactive"
                       }
@@ -355,7 +357,7 @@ RawMaterialsPage() {
                     <Link
 
                       href={
-                        `/raw-materials/${material.id}`
+                        `/material-sources/${source.id}`
                       }
 
                       className="

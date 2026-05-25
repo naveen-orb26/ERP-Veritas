@@ -39,6 +39,18 @@ class GRNLineSerializer(
         read_only=True
     )
 
+
+    chemical_identity = serializers.CharField(
+
+        source=(
+            "material_source"
+            ".raw_material"
+            ".chemical_identity"
+        ),
+
+        read_only=True
+    )
+        
     material_code = serializers.CharField(
 
         source=(
@@ -71,6 +83,13 @@ class GRNLineSerializer(
         read_only=True
     )
 
+    warehouse_name = serializers.CharField(
+
+        source="warehouse.name",
+
+        read_only=True
+    )
+
     class Meta:
 
         model = GRNLine
@@ -84,6 +103,8 @@ class GRNLineSerializer(
             "material_source",
 
             "material_name",
+
+            "chemical_identity",
 
             "material_code",
 
@@ -106,6 +127,8 @@ class GRNLineSerializer(
             "batch_reference",
 
             "remarks",
+
+            "warehouse_name",
         ]
 
 
@@ -238,14 +261,21 @@ class GRNCreateUpdateSerializer(
 
             "invoice_date",
 
-            "received_by",
-
             "status",
+
+            "received_by",
 
             "remarks",
 
             "lines",
         ]
+    extra_kwargs = {
+
+    "status": {
+
+        "required": False
+    }
+}
 
     def validate(self, attrs):
 
@@ -298,6 +328,10 @@ class GRNCreateUpdateSerializer(
             )
         )
 
+        validated_data["status"] = (
+            "DRAFT"
+        )
+                
         grn = GRN.objects.create(
 
             **validated_data
@@ -310,9 +344,7 @@ class GRNCreateUpdateSerializer(
                 grn=grn,
 
                 **line_data
-            )
-
-        apply_grn_inventory(grn)
+            )  
 
         return grn
 
@@ -338,9 +370,10 @@ class GRNCreateUpdateSerializer(
             instance.status
         )
 
-        reverse_grn_inventory(
-            instance
-        )
+        if previous_status == "APPROVED":
+            reverse_grn_inventory(
+                instance
+            )
 
         lines_data = (
             validated_data.pop(
@@ -372,10 +405,19 @@ class GRNCreateUpdateSerializer(
                 **line_data
             )
 
-        if (
-            instance.status
-            !=
-            "CANCELLED"
+        if ( previous_status == "DRAFT" and instance.status == "APPROVED"):
+
+            apply_grn_inventory(
+                instance
+            )
+
+        elif (
+
+            previous_status == "APPROVED"
+
+            and
+
+            instance.status == "APPROVED"
         ):
 
             apply_grn_inventory(

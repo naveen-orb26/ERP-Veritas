@@ -1,18 +1,30 @@
 import Link
 from "next/link"
 
+import MaterialSourceForm
+from "@/components/material-sources/material-sources-form"
+
 import {
 
-  getRawMaterial,
+  getMaterialSourceServer,
+
+} from "@/lib/api/material-sources-server"
+
+import {
+
+  getRawMaterialsServer,
 
 } from "@/lib/api/raw-materials-server"
 
-import RawMaterialForm
-from "@/components/raw-materials/raw-material-form"
+import {
+
+  getVendors,
+
+} from "@/lib/api/vendors"
 
 
 export default async function
-EditRawMaterialPage({
+EditMaterialSourcePage({
 
   params,
 }: {
@@ -24,8 +36,22 @@ EditRawMaterialPage({
   const { id } =
     await params
 
-  const rawMaterial =
-    await getRawMaterial(id)
+  const [
+
+    materialSource,
+
+    rawMaterials,
+
+    vendors,
+
+  ] = await Promise.all([
+
+    getMaterialSourceServer(id),
+
+    getRawMaterialsServer(),
+
+    getVendors(),
+  ])
 
   return (
 
@@ -39,7 +65,7 @@ EditRawMaterialPage({
       <Link
 
         href={
-          `/raw-materials/${id}`
+          `/material-sources/${id}`
         }
 
         className="
@@ -58,7 +84,7 @@ EditRawMaterialPage({
           dark:hover:bg-zinc-900
         "
       >
-        ← Back to Raw Material
+        ← Back to Material Source
       </Link>
 
       <div>
@@ -69,7 +95,7 @@ EditRawMaterialPage({
             font-bold
           "
         >
-          Edit Raw Material
+          Edit Material Source
         </h1>
 
         <p
@@ -80,7 +106,7 @@ EditRawMaterialPage({
           "
         >
           {
-            rawMaterial.material_code
+            materialSource.sm_code
           }
         </p>
 
@@ -98,9 +124,18 @@ EditRawMaterialPage({
         "
       >
 
-        <RawMaterialForm
-          rawMaterial={
-            rawMaterial
+        <MaterialSourceForm
+
+          materialSource={
+            materialSource
+          }
+
+          rawMaterials={
+            rawMaterials
+          }
+
+          vendors={
+            vendors
           }
         />
 

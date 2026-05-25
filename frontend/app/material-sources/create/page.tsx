@@ -1,12 +1,37 @@
 import Link
 from "next/link"
 
-import RawMaterialForm
-from "@/components/raw-materials/raw-material-form"
+import MaterialSourceForm
+from "@/components/material-sources/material-sources-form"
+
+import {
+
+  getRawMaterialsServer,
+
+} from "@/lib/api/raw-materials-server"
+
+import {
+
+  getVendors,
+
+} from "@/lib/api/vendors"
 
 
-export default function
-CreateRawMaterialPage() {
+export default async function
+CreateMaterialSourcePage() {
+
+  const [
+
+    rawMaterials,
+
+    vendors,
+
+  ] = await Promise.all([
+
+    getRawMaterialsServer(),
+
+    getVendors(),
+  ])
 
   return (
 
@@ -19,7 +44,7 @@ CreateRawMaterialPage() {
 
       <Link
 
-        href="/raw-materials"
+        href="/material-sources"
 
         className="
           inline-flex
@@ -37,7 +62,7 @@ CreateRawMaterialPage() {
           dark:hover:bg-zinc-900
         "
       >
-        ← Back to Raw Materials
+        ← Back to Material Sources
       </Link>
 
       <div>
@@ -48,7 +73,7 @@ CreateRawMaterialPage() {
             font-bold
           "
         >
-          Create Raw Material
+          Create Material Source
         </h1>
 
         <p
@@ -58,9 +83,9 @@ CreateRawMaterialPage() {
             text-zinc-500
           "
         >
-          Create procurement and
-          production raw material
-          master data
+          Link vendors with raw
+          materials for procurement
+          and inventory traceability
         </p>
 
       </div>
@@ -77,10 +102,19 @@ CreateRawMaterialPage() {
         "
       >
 
-        <RawMaterialForm />
+        <MaterialSourceForm
+
+          rawMaterials={
+            rawMaterials
+          }
+
+          vendors={
+            vendors
+          }
+        />
 
       </div>
 
     </div>
   )
-} 
+}

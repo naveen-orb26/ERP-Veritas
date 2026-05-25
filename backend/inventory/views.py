@@ -10,16 +10,12 @@ from .models import (
 
     Warehouse,
 
-    InventoryStock,
-
     StockLedger,
 )
 
 from .serializers import (
 
     WarehouseSerializer,
-
-    InventoryStockSerializer,
 
     StockLedgerSerializer,
 
@@ -52,36 +48,6 @@ class WarehouseViewSet(
     serializer_class = (
         WarehouseSerializer
     )
-
-
-# =====================================================
-# INVENTORY STOCK VIEWSET
-# =====================================================
-
-class InventoryStockViewSet(
-    ModelViewSet
-):
-
-    queryset = (
-        InventoryStock.objects
-        .select_related(
-
-            "product",
-
-            "warehouse",
-        )
-        .order_by("-updated_at")
-    )
-
-    serializer_class = (
-        InventoryStockSerializer
-    )
-
-    http_method_names = [
-
-        "get",
-    ]
-
 
 # =====================================================
 # STOCK LEDGER VIEWSET

@@ -4,7 +4,8 @@ from django.core.exceptions import ValidationError
 
 from django.utils import timezone
 
-from product_master.models import Product
+from raw_materials.models import MaterialSource
+
 
 from users.models import User
 
@@ -60,136 +61,6 @@ class Warehouse(models.Model):
             f"{self.warehouse_name}"
         )
 
-
-# =====================================================
-# INVENTORY STOCK SNAPSHOT
-# =====================================================
-
-class InventoryStock(models.Model):
-
-    warehouse = models.ForeignKey(
-
-        Warehouse,
-
-        on_delete=models.PROTECT,
-
-        related_name="inventory_stocks"
-    )
-
-    product = models.ForeignKey(
-
-        Product,
-
-        on_delete=models.PROTECT,
-
-        related_name="inventory_stocks"
-    )
-
-    current_quantity = models.DecimalField(
-
-        max_digits=18,
-
-        decimal_places=4,
-
-        default=0
-    )
-
-    reserved_quantity = models.DecimalField(
-
-        max_digits=18,
-
-        decimal_places=4,
-
-        default=0
-    )
-
-    available_quantity = models.DecimalField(
-
-        max_digits=18,
-
-        decimal_places=4,
-
-        default=0
-    )
-
-    reorder_level = models.DecimalField(
-
-        max_digits=18,
-
-        decimal_places=4,
-
-        default=0
-    )
-
-    last_movement_at = models.DateTimeField(
-
-        null=True,
-
-        blank=True
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True
-    )
-
-    class Meta:
-
-        unique_together = (
-
-            "warehouse",
-
-            "product",
-        )
-
-    def clean(self):
-
-        if self.current_quantity < 0:
-
-            raise ValidationError(
-                "Current quantity "
-                "cannot be negative"
-            )
-
-        if self.reserved_quantity < 0:
-
-            raise ValidationError(
-                "Reserved quantity "
-                "cannot be negative"
-            )
-
-        if (
-            self.reserved_quantity
-            >
-            self.current_quantity
-        ):
-
-            raise ValidationError(
-                "Reserved quantity "
-                "cannot exceed "
-                "current quantity"
-            )
-
-    def save(self, *args, **kwargs):
-
-        self.available_quantity = (
-
-            self.current_quantity
-            -
-            self.reserved_quantity
-        )
-
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-
-        return (
-            f"{self.product} | "
-            f"{self.warehouse}"
-        )
 
 
 # =====================================================
@@ -251,10 +122,11 @@ class StockLedger(models.Model):
         related_name="stock_ledger_entries"
     )
 
-    product = models.ForeignKey(
+    material_source = models.ForeignKey(
 
-        Product,
+        MaterialSource,
 
+        blank=True,
         on_delete=models.PROTECT,
 
         related_name="stock_ledger_entries"
@@ -305,12 +177,17 @@ class StockLedger(models.Model):
 
     created_by = models.ForeignKey(
 
-        User,
+            User,
 
-        on_delete=models.PROTECT,
+            on_delete=models.PROTECT,
 
-        related_name="stock_ledger_entries"
-    )
+            related_name=
+                "stock_ledger_entries",
+
+            null=True,
+
+            blank=True,
+        )
 
     created_at = models.DateTimeField(
         auto_now_add=True
@@ -328,7 +205,7 @@ class StockLedger(models.Model):
     def __str__(self):
 
         return (
-            f"{self.product} | "
+            f"{self.material_source} | "
             f"{self.movement_type} | "
             f"{self.quantity}"
         )

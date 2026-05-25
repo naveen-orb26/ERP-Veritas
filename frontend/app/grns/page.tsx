@@ -3,16 +3,16 @@ from "next/link"
 
 import {
 
-  getRawMaterialsServer,
+  getGRNsServer,
 
-} from "@/lib/api/raw-materials-server"
+} from "@/lib/api/grns-server"
 
 
 export default async function
-RawMaterialsPage() {
+GRNsPage() {
 
-  const rawMaterials =
-    await getRawMaterialsServer()
+  const grns =
+    await getGRNsServer()
 
   return (
 
@@ -42,7 +42,7 @@ RawMaterialsPage() {
               font-bold
             "
           >
-            Raw Materials
+            Goods Receipt Notes
           </h1>
 
           <p
@@ -52,15 +52,15 @@ RawMaterialsPage() {
               text-zinc-500
             "
           >
-            Procurement and production
-            raw material master data
+            Inventory receipt and
+            procurement intake records
           </p>
 
         </div>
 
         <Link
 
-          href="/raw-materials/create"
+          href="/grns/create"
 
           className="
             inline-flex
@@ -78,7 +78,7 @@ RawMaterialsPage() {
             dark:text-black
           "
         >
-          Create Raw Material
+          Create GRN
         </Link>
 
       </div>
@@ -127,7 +127,7 @@ RawMaterialsPage() {
                   text-zinc-500
                 "
               >
-                Material Code
+                GRN Number
               </th>
 
               <th
@@ -142,7 +142,7 @@ RawMaterialsPage() {
                   text-zinc-500
                 "
               >
-                Material Name
+                Vendor
               </th>
 
               <th
@@ -157,7 +157,7 @@ RawMaterialsPage() {
                   text-zinc-500
                 "
               >
-                Chemical Identity
+                PO Number
               </th>
 
               <th
@@ -172,22 +172,7 @@ RawMaterialsPage() {
                   text-zinc-500
                 "
               >
-                Category
-              </th>
-
-              <th
-                className="
-                  px-4
-                  py-3
-                  text-left
-                  text-xs
-                  font-semibold
-                  uppercase
-                  tracking-wide
-                  text-zinc-500
-                "
-              >
-                Unit
+                Invoice Number
               </th>
 
               <th
@@ -209,6 +194,21 @@ RawMaterialsPage() {
                 className="
                   px-4
                   py-3
+                  text-left
+                  text-xs
+                  font-semibold
+                  uppercase
+                  tracking-wide
+                  text-zinc-500
+                "
+              >
+                Received At
+              </th>
+
+              <th
+                className="
+                  px-4
+                  py-3
                 "
               />
 
@@ -218,12 +218,12 @@ RawMaterialsPage() {
 
           <tbody>
 
-            {rawMaterials.map(
-              (material: any) => (
+            {grns.map(
+              (grn: any) => (
 
                 <tr
 
-                  key={material.id}
+                  key={grn.id}
 
                   className="
                     border-b
@@ -241,7 +241,7 @@ RawMaterialsPage() {
                     "
                   >
                     {
-                      material.material_code
+                      grn.grn_number
                     }
                   </td>
 
@@ -253,21 +253,7 @@ RawMaterialsPage() {
                     "
                   >
                     {
-                      material.material_name
-                    }
-                  </td>
-
-                  <td
-                    className="
-                      px-4
-                      py-4
-                      text-sm
-                      text-zinc-500
-                    "
-                  >
-                    {
-                      material
-                      .chemical_identity
+                      grn.vendor_name
                     }
                   </td>
 
@@ -279,8 +265,7 @@ RawMaterialsPage() {
                     "
                   >
                     {
-                      material
-                      .material_category
+                      grn.po_number || "-"
                     }
                   </td>
 
@@ -292,7 +277,8 @@ RawMaterialsPage() {
                     "
                   >
                     {
-                      material.base_unit
+                      grn.invoice_number
+                      || "-"
                     }
                   </td>
 
@@ -315,7 +301,9 @@ RawMaterialsPage() {
                         border
 
                         ${
-                          material.is_active
+                          grn.status ===
+                          "APPROVED"
+
                             ? `
                               border-green-200
                               bg-green-50
@@ -324,24 +312,49 @@ RawMaterialsPage() {
                               dark:bg-green-950/40
                               dark:text-green-300
                             `
-                            : `
-                              border-red-200
-                              bg-red-50
-                              text-red-700
-                              dark:border-red-900
-                              dark:bg-red-950/40
-                              dark:text-red-300
-                            `
+
+                            : grn.status ===
+                              "CANCELLED"
+
+                              ? `
+                                border-red-200
+                                bg-red-50
+                                text-red-700
+                                dark:border-red-900
+                                dark:bg-red-950/40
+                                dark:text-red-300
+                              `
+
+                              : `
+                                border-yellow-200
+                                bg-yellow-50
+                                text-yellow-700
+                                dark:border-yellow-900
+                                dark:bg-yellow-950/40
+                                dark:text-yellow-300
+                              `
                         }
                       `}
                     >
                       {
-                        material.is_active
-                          ? "Active"
-                          : "Inactive"
+                        grn.status
                       }
                     </div>
 
+                  </td>
+
+                  <td
+                    className="
+                      px-4
+                      py-4
+                      text-sm
+                    "
+                  >
+                    {
+                      new Date(
+                        grn.received_at
+                      ).toLocaleDateString()
+                    }
                   </td>
 
                   <td
@@ -355,7 +368,7 @@ RawMaterialsPage() {
                     <Link
 
                       href={
-                        `/raw-materials/${material.id}`
+                        `/grns/${grn.id}`
                       }
 
                       className="

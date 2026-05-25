@@ -1,12 +1,67 @@
 import Link
 from "next/link"
 
-import RawMaterialForm
-from "@/components/raw-materials/raw-material-form"
+import GRNForm
+from "@/components/grns/grn-form"
+
+import {
+
+  getGRNServer,
+
+} from "@/lib/api/grns-server"
+
+import {
+
+  getVendors,
+
+} from "@/lib/api/vendors"
+
+import {
+
+  getMaterialSourcesServer,
+
+} from "@/lib/api/material-sources-server"
+
+import {
+
+  getWarehousesServer,
+
+} from "@/lib/api/warehouses-server"
 
 
-export default function
-CreateRawMaterialPage() {
+export default async function
+EditGRNPage({
+
+  params,
+}: {
+  params: Promise<{
+    id: string
+  }>
+}) {
+
+  const { id } =
+    await params
+
+  const [
+
+    grn,
+
+    vendors,
+
+    materialSources,
+
+    warehouses,
+
+  ] = await Promise.all([
+
+    getGRNServer(id),
+
+    getVendors(),
+
+    getMaterialSourcesServer(),
+
+    getWarehousesServer(),
+  ])
 
   return (
 
@@ -19,7 +74,7 @@ CreateRawMaterialPage() {
 
       <Link
 
-        href="/raw-materials"
+        href={`/grns/${id}`}
 
         className="
           inline-flex
@@ -37,7 +92,7 @@ CreateRawMaterialPage() {
           dark:hover:bg-zinc-900
         "
       >
-        ← Back to Raw Materials
+        ← Back to GRN
       </Link>
 
       <div>
@@ -48,7 +103,7 @@ CreateRawMaterialPage() {
             font-bold
           "
         >
-          Create Raw Material
+          Edit GRN
         </h1>
 
         <p
@@ -58,9 +113,7 @@ CreateRawMaterialPage() {
             text-zinc-500
           "
         >
-          Create procurement and
-          production raw material
-          master data
+          {grn.grn_number}
         </p>
 
       </div>
@@ -77,10 +130,21 @@ CreateRawMaterialPage() {
         "
       >
 
-        <RawMaterialForm />
+        <GRNForm
+
+          grn={grn}
+
+          vendors={vendors}
+
+          materialSources={
+            materialSources
+          }
+
+          warehouses={warehouses}
+        />
 
       </div>
 
     </div>
   )
-} 
+}

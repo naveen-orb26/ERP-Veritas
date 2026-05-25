@@ -1,12 +1,47 @@
 import Link
 from "next/link"
 
-import RawMaterialForm
-from "@/components/raw-materials/raw-material-form"
+import GRNForm
+from "@/components/grns/grn-form"
+
+import {
+
+  getVendors,
+
+} from "@/lib/api/vendors"
+
+import {
+
+  getMaterialSourcesServer,
+
+} from "@/lib/api/material-sources-server"
+
+import {
+
+  getWarehousesServer,
+
+} from "@/lib/api/warehouses-server"
 
 
-export default function
-CreateRawMaterialPage() {
+export default async function
+CreateGRNPage() {
+
+  const [
+
+    vendors,
+
+    materialSources,
+
+    warehouses,
+
+  ] = await Promise.all([
+
+    getVendors(),
+
+    getMaterialSourcesServer(),
+
+    getWarehousesServer(),
+  ])
 
   return (
 
@@ -19,7 +54,7 @@ CreateRawMaterialPage() {
 
       <Link
 
-        href="/raw-materials"
+        href="/grns"
 
         className="
           inline-flex
@@ -37,7 +72,7 @@ CreateRawMaterialPage() {
           dark:hover:bg-zinc-900
         "
       >
-        ← Back to Raw Materials
+        ← Back to GRNs
       </Link>
 
       <div>
@@ -48,7 +83,7 @@ CreateRawMaterialPage() {
             font-bold
           "
         >
-          Create Raw Material
+          Create GRN
         </h1>
 
         <p
@@ -58,9 +93,9 @@ CreateRawMaterialPage() {
             text-zinc-500
           "
         >
-          Create procurement and
-          production raw material
-          master data
+          Record incoming raw
+          material receipts and
+          update inventory
         </p>
 
       </div>
@@ -77,10 +112,23 @@ CreateRawMaterialPage() {
         "
       >
 
-        <RawMaterialForm />
+        <GRNForm
+
+          vendors={
+            vendors
+          }
+
+          materialSources={
+            materialSources
+          }
+
+          warehouses={
+            warehouses
+          }
+        />
 
       </div>
 
     </div>
   )
-} 
+}

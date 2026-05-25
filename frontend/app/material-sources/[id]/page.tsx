@@ -3,13 +3,13 @@ from "next/link"
 
 import {
 
-  getRawMaterial,
+  getMaterialSourceServer,
 
-} from "@/lib/api/raw-materials-server"
+} from "@/lib/api/material-sources-server"
 
 
 export default async function
-RawMaterialDetailPage({
+MaterialSourceDetailPage({
 
   params,
 }: {
@@ -21,8 +21,8 @@ RawMaterialDetailPage({
   const { id } =
     await params
 
-  const rawMaterial =
-    await getRawMaterial(id)
+  const materialSource =
+    await getMaterialSourceServer(id)
 
   return (
 
@@ -35,7 +35,7 @@ RawMaterialDetailPage({
 
       <Link
 
-        href="/raw-materials"
+        href="/material-sources"
 
         className="
           inline-flex
@@ -53,7 +53,7 @@ RawMaterialDetailPage({
           dark:hover:bg-zinc-900
         "
       >
-        ← Back to Raw Materials
+        ← Back to Material Sources
       </Link>
 
       <div
@@ -84,7 +84,8 @@ RawMaterialDetailPage({
               "
             >
               {
-                rawMaterial.material_name
+                materialSource
+                .material_name
               }
             </h1>
 
@@ -100,7 +101,9 @@ RawMaterialDetailPage({
                 border
 
                 ${
-                  rawMaterial.is_active
+                  materialSource
+                  .is_active
+
                     ? `
                       border-green-200
                       bg-green-50
@@ -121,7 +124,8 @@ RawMaterialDetailPage({
               `}
             >
               {
-                rawMaterial.is_active
+                materialSource
+                .is_active
                   ? "Active"
                   : "Inactive"
               }
@@ -137,7 +141,7 @@ RawMaterialDetailPage({
             "
           >
             {
-              rawMaterial.material_code
+              materialSource.sm_code
             }
           </p>
 
@@ -146,7 +150,7 @@ RawMaterialDetailPage({
         <Link
 
           href={
-            `/raw-materials/${id}/edit`
+            `/material-sources/${id}/edit`
           }
 
           className="
@@ -165,7 +169,7 @@ RawMaterialDetailPage({
             dark:text-black
           "
         >
-          Edit Raw Material
+          Edit Material Source
         </Link>
 
       </div>
@@ -199,7 +203,7 @@ RawMaterialDetailPage({
               font-semibold
             "
           >
-            Material Information
+            Raw Material
           </h2>
 
           <div
@@ -207,6 +211,34 @@ RawMaterialDetailPage({
               space-y-4
             "
           >
+
+            <div>
+
+              <p
+                className="
+                  text-xs
+                  uppercase
+                  tracking-wide
+                  text-zinc-500
+                "
+              >
+                Material Code
+              </p>
+
+              <p
+                className="
+                  mt-1
+                  text-sm
+                  font-medium
+                "
+              >
+                {
+                  materialSource
+                  .material_code
+                }
+              </p>
+
+            </div>
 
             <div>
 
@@ -229,64 +261,8 @@ RawMaterialDetailPage({
                 "
               >
                 {
-                  rawMaterial
+                  materialSource
                   .chemical_identity
-                }
-              </p>
-
-            </div>
-
-            <div>
-
-              <p
-                className="
-                  text-xs
-                  uppercase
-                  tracking-wide
-                  text-zinc-500
-                "
-              >
-                Category
-              </p>
-
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  font-medium
-                "
-              >
-                {
-                  rawMaterial
-                  .material_category
-                }
-              </p>
-
-            </div>
-
-            <div>
-
-              <p
-                className="
-                  text-xs
-                  uppercase
-                  tracking-wide
-                  text-zinc-500
-                "
-              >
-                Base Unit
-              </p>
-
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  font-medium
-                "
-              >
-                {
-                  rawMaterial
-                  .base_unit
                 }
               </p>
 
@@ -316,7 +292,7 @@ RawMaterialDetailPage({
               font-semibold
             "
           >
-            Inventory Controls
+            Vendor Information
           </h2>
 
           <div
@@ -335,7 +311,7 @@ RawMaterialDetailPage({
                   text-zinc-500
                 "
               >
-                Minimum Quantity
+                Vendor
               </p>
 
               <p
@@ -346,8 +322,8 @@ RawMaterialDetailPage({
                 "
               >
                 {
-                  rawMaterial
-                  .minimum_quantity
+                  materialSource
+                  .vendor_name
                 }
               </p>
 
@@ -363,7 +339,7 @@ RawMaterialDetailPage({
                   text-zinc-500
                 "
               >
-                Suggested Reorder Quantity
+                Vendor Material Code
               </p>
 
               <p
@@ -374,8 +350,9 @@ RawMaterialDetailPage({
                 "
               >
                 {
-                  rawMaterial
-                  .reorder_quantity
+                  materialSource
+                  .vendor_material_code
+                  || "-"
                 }
               </p>
 
@@ -407,7 +384,7 @@ RawMaterialDetailPage({
             font-semibold
           "
         >
-          Description
+          Remarks
         </h2>
 
         <p
@@ -419,8 +396,8 @@ RawMaterialDetailPage({
           "
         >
           {
-            rawMaterial.description
-            || "No description provided."
+            materialSource.remarks
+            || "No remarks provided."
           }
         </p>
 
