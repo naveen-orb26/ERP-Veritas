@@ -163,26 +163,26 @@ class StockLedgerSerializer(
             "created_at",
         ]
 
-# =====================================================
-# MANUAL STOCK MOVEMENT SERIALIZER
-# =====================================================
+# # =====================================================
+# # MANUAL STOCK MOVEMENT SERIALIZER
+# # =====================================================
 
-class ManualStockMovementSerializer(
-    serializers.Serializer
-):
+# class ManualStockMovementSerializer(
+#     serializers.Serializer
+# ):
 
-    warehouse = serializers.IntegerField()
+#     warehouse = serializers.IntegerField()
 
-    product = serializers.IntegerField()
+#     product = serializers.IntegerField()
 
-    quantity = serializers.DecimalField(
+#     quantity = serializers.DecimalField(
 
-        max_digits=18,
+#         max_digits=18,
 
-        decimal_places=4
-    )
+#         decimal_places=4
+#     )
 
-    remarks = serializers.CharField(
-        required=False,
-        allow_blank=True
-    )
+#     remarks = serializers.CharField(
+#         required=False,
+#         allow_blank=True
+#     )

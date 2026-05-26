@@ -85,7 +85,7 @@ class GRNLineSerializer(
 
     warehouse_name = serializers.CharField(
 
-        source="warehouse.name",
+        source="warehouse.warehouse_name",
 
         read_only=True
     )

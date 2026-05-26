@@ -19,7 +19,7 @@ from .serializers import (
 
     StockLedgerSerializer,
 
-    ManualStockMovementSerializer,
+    # ManualStockMovementSerializer,
 )
 
 from .services import (
@@ -29,7 +29,7 @@ from .services import (
     manual_stock_issue,
 )
 
-from product_master.models import Product
+# from product_master.models import Product
 
 
 # =====================================================
@@ -61,7 +61,13 @@ class StockLedgerViewSet(
         StockLedger.objects
         .select_related(
 
-            "product",
+            # "product",
+    
+            "material_source",
+
+            "material_source__raw_material",
+
+            "material_source__vendor",
 
             "warehouse",
 
@@ -79,148 +85,148 @@ class StockLedgerViewSet(
         "get",
     ]
 
-    # -------------------------------------------------
-    # MANUAL STOCK RECEIPT
-    # -------------------------------------------------
+    # # -------------------------------------------------
+    # # MANUAL STOCK RECEIPT
+    # # -------------------------------------------------
 
-    @action(
+    # @action(
 
-        detail=False,
+    #     detail=False,
 
-        methods=["post"],
+    #     methods=["post"],
 
-        url_path="manual-receipt"
-    )
+    #     url_path="manual-receipt"
+    # )
 
-    def manual_receipt(
-        self,
-        request,
-    ):
+    # def manual_receipt(
+    #     self,
+    #     request,
+    # ):
 
-        serializer = (
-            ManualStockMovementSerializer(
-                data=request.data
-            )
-        )
+    #     serializer = (
+    #         ManualStockMovementSerializer(
+    #             data=request.data
+    #         )
+    #     )
 
-        serializer.is_valid(
-            raise_exception=True
-        )
+    #     serializer.is_valid(
+    #         raise_exception=True
+    #     )
 
-        warehouse = (
-            Warehouse.objects.get(
-                id=serializer.validated_data[
-                    "warehouse"
-                ]
-            )
-        )
+    #     warehouse = (
+    #         Warehouse.objects.get(
+    #             id=serializer.validated_data[
+    #                 "warehouse"
+    #             ]
+    #         )
+    #     )
 
-        product = (
-            Product.objects.get(
-                id=serializer.validated_data[
-                    "product"
-                ]
-            )
-        )
+    #     product = (
+    #         Product.objects.get(
+    #             id=serializer.validated_data[
+    #                 "product"
+    #             ]
+    #         )
+    #     )
 
-        ledger_entry = (
-            manual_stock_receipt(
+    #     ledger_entry = (
+    #         manual_stock_receipt(
 
-                warehouse=warehouse,
+    #             warehouse=warehouse,
 
-                product=product,
+    #             product=product,
 
-                quantity=serializer.validated_data[
-                    "quantity"
-                ],
+    #             quantity=serializer.validated_data[
+    #                 "quantity"
+    #             ],
 
-                created_by=request.user,
+    #             created_by=request.user,
 
-                remarks=serializer.validated_data.get(
-                    "remarks",
-                    "",
-                ),
-            )
-        )
+    #             remarks=serializer.validated_data.get(
+    #                 "remarks",
+    #                 "",
+    #             ),
+    #         )
+    #     )
 
-        return Response(
+    #     return Response(
 
-            StockLedgerSerializer(
-                ledger_entry
-            ).data,
+    #         StockLedgerSerializer(
+    #             ledger_entry
+    #         ).data,
 
-            status=status.HTTP_201_CREATED
-        )
+    #         status=status.HTTP_201_CREATED
+    #     )
 
-    # -------------------------------------------------
-    # MANUAL STOCK ISSUE
-    # -------------------------------------------------
+    # # -------------------------------------------------
+    # # MANUAL STOCK ISSUE
+    # # -------------------------------------------------
 
-    @action(
+    # @action(
 
-        detail=False,
+    #     detail=False,
 
-        methods=["post"],
+    #     methods=["post"],
 
-        url_path="manual-issue"
-    )
+    #     url_path="manual-issue"
+    # )
 
-    def manual_issue(
-        self,
-        request,
-    ):
+    # def manual_issue(
+    #     self,
+    #     request,
+    # ):
 
-        serializer = (
-            ManualStockMovementSerializer(
-                data=request.data
-            )
-        )
+    #     serializer = (
+    #         ManualStockMovementSerializer(
+    #             data=request.data
+    #         )
+    #     )
 
-        serializer.is_valid(
-            raise_exception=True
-        )
+    #     serializer.is_valid(
+    #         raise_exception=True
+    #     )
 
-        warehouse = (
-            Warehouse.objects.get(
-                id=serializer.validated_data[
-                    "warehouse"
-                ]
-            )
-        )
+    #     warehouse = (
+    #         Warehouse.objects.get(
+    #             id=serializer.validated_data[
+    #                 "warehouse"
+    #             ]
+    #         )
+    #     )
 
-        product = (
-            Product.objects.get(
-                id=serializer.validated_data[
-                    "product"
-                ]
-            )
-        )
+    #     product = (
+    #         Product.objects.get(
+    #             id=serializer.validated_data[
+    #                 "product"
+    #             ]
+    #         )
+    #     )
 
-        ledger_entry = (
-            manual_stock_issue(
+    #     ledger_entry = (
+    #         manual_stock_issue(
 
-                warehouse=warehouse,
+    #             warehouse=warehouse,
 
-                product=product,
+    #             product=product,
 
-                quantity=serializer.validated_data[
-                    "quantity"
-                ],
+    #             quantity=serializer.validated_data[
+    #                 "quantity"
+    #             ],
 
-                created_by=request.user,
+    #             created_by=request.user,
 
-                remarks=serializer.validated_data.get(
-                    "remarks",
-                    "",
-                ),
-            )
-        )
+    #             remarks=serializer.validated_data.get(
+    #                 "remarks",
+    #                 "",
+    #             ),
+    #         )
+    #     )
 
-        return Response(
+    #     return Response(
 
-            StockLedgerSerializer(
-                ledger_entry
-            ).data,
+    #         StockLedgerSerializer(
+    #             ledger_entry
+    #         ).data,
 
-            status=status.HTTP_201_CREATED
-        )
+    #         status=status.HTTP_201_CREATED
+    #     )
