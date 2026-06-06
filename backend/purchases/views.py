@@ -1,206 +1,184 @@
-from django.db import transaction
-
 from rest_framework import viewsets
-from rest_framework.exceptions import ValidationError
 
-from activity_log.utils import log_activity
-from core.permissions import IsEmployee, ManagerOrAbove
+from rest_framework.decorators import (
+    action
+)
+
+from rest_framework.response import (
+    Response
+)
+
+from rest_framework import status
 
 from .models import (
-    Supplier,
+
     PurchaseOrder,
-    PurchaseInvoice,
-    GRN,
-    RawStockMovement,
 )
 
 from .serializers import (
-    SupplierSerializer,
-    PurchaseOrderSerializer,
-    PurchaseInvoiceSerializer,
-    GRNSerializer,
-    RawStockMovementSerializer,
+
+    PurchaseOrderListSerializer,
+
+    PurchaseOrderDetailSerializer,
+
+    PurchaseOrderCreateUpdateSerializer,
 )
 
-from .services import (
-    validate_purchase_order,
-    validate_grn,
-    validate_purchase_invoice,
-)
 
-class SupplierViewSet(viewsets.ModelViewSet):
+# =====================================================
+# PURCHASE ORDER VIEWSET
+# =====================================================
 
-    permission_classes = [IsEmployee]
+class PurchaseOrderViewSet(
 
-    queryset = Supplier.objects.all().order_by("-id")
+    viewsets.ModelViewSet
+):
 
-    serializer_class = SupplierSerializer
+    queryset = (
 
-class PurchaseOrderViewSet(viewsets.ModelViewSet):
+        PurchaseOrder.objects
 
-    permission_classes = [IsEmployee]
+        .select_related(
+            "vendor"
+        )
 
-    queryset = PurchaseOrder.objects.all().order_by("-id")
+        .prefetch_related(
+            "lines"
+        )
 
-    serializer_class = PurchaseOrderSerializer
+        .order_by("-created_at")
+    )
 
+    def get_serializer_class(self):
 
-    def perform_create(self, serializer):
+        if self.action == "list":
 
-        with transaction.atomic():
-
-            lines_data = serializer.validated_data.get(
-                "lines"
+            return (
+                PurchaseOrderListSerializer
             )
 
-            if not lines_data:
-                raise ValidationError(
-                    "Purchase order must contain at least one line."
+        if self.action == "retrieve":
+
+            return (
+                PurchaseOrderDetailSerializer
+            )
+
+        return (
+            PurchaseOrderCreateUpdateSerializer
+        )
+
+    # =================================================
+    # APPROVE PURCHASE ORDER
+    # =================================================
+
+    @action(
+
+        detail=True,
+
+        methods=["post"]
+    )
+
+    def approve(
+
+        self,
+
+        request,
+
+        pk=None
+    ):
+
+        purchase_order = (
+            self.get_object()
+        )
+
+        if (
+            purchase_order.status
+            ==
+            "CANCELLED"
+        ):
+
+            return Response(
+
+                {
+                    "detail":
+
+                    "Cancelled purchase "
+                    "order cannot be "
+                    "approved."
+                },
+
+                status=(
+                    status
+                    .HTTP_400_BAD_REQUEST
                 )
-
-            validate_purchase_order(
-                order_data=serializer.validated_data,
-                lines_data=lines_data,
             )
 
-            order = serializer.save()
+        purchase_order.status = (
+            "APPROVED"
+        )
 
-            log_activity(
-                user=self.request.user,
-                action="CREATE",
-                module="PurchaseOrder",
-                reference_id=order.id,
-                description="Purchase order created",
-                ip_address=self.request.META.get(
-                    "REMOTE_ADDR"
-                ),
-            )
-class GRNViewSet(viewsets.ModelViewSet):
+        purchase_order.save()
 
-    permission_classes = [IsEmployee]
+        return Response({
 
-    queryset = GRN.objects.all().order_by("-id")
+            "detail":
+            "Purchase order approved."
+        })
 
-    serializer_class = GRNSerializer
+    # =================================================
+    # CANCEL PURCHASE ORDER
+    # =================================================
 
+    @action(
 
-    def perform_create(self, serializer):
+        detail=True,
 
-        with transaction.atomic():
+        methods=["post"]
+    )
 
-            purchase_line = serializer.validated_data.get(
-                "purchase_order_line"
-            )
+    def cancel(
 
-            received_quantity = serializer.validated_data.get(
-                "accepted_quantity"
-            )
+        self,
 
-            if not purchase_line:
-                raise ValidationError(
-                    "Purchase order line is required."
+        request,
+
+        pk=None
+    ):
+
+        purchase_order = (
+            self.get_object()
+        )
+
+        if (
+            purchase_order.status
+            ==
+            "CLOSED"
+        ):
+
+            return Response(
+
+                {
+                    "detail":
+
+                    "Closed purchase "
+                    "order cannot be "
+                    "cancelled."
+                },
+
+                status=(
+                    status
+                    .HTTP_400_BAD_REQUEST
                 )
-
-            if received_quantity is None:
-                raise ValidationError(
-                    "Accepted quantity is required."
-                )
-
-            validate_grn(
-                purchase_line=purchase_line,
-                received_quantity=received_quantity,
             )
 
-            grn = serializer.save()
+        purchase_order.status = (
+            "CANCELLED"
+        )
 
-            # Update received quantity
+        purchase_order.save()
 
-            purchase_line.received_quantity += received_quantity
+        return Response({
 
-            purchase_line.save(
-                update_fields=["received_quantity"]
-            )
-
-            # Create stock movement
-
-            RawStockMovement.objects.create(
-                product=grn.product,
-                movement_type="PURCHASE_IN",
-                quantity=grn.accepted_quantity,
-                reference_id=grn.id,
-                remarks="Stock received via GRN",
-            )
-
-            log_activity(
-                user=self.request.user,
-                action="CREATE",
-                module="GRN",
-                reference_id=grn.id,
-                description="Goods received via GRN",
-                ip_address=self.request.META.get(
-                    "REMOTE_ADDR"
-                ),
-            )
-
-class PurchaseInvoiceViewSet(viewsets.ModelViewSet):
-
-    permission_classes = [ManagerOrAbove]
-
-    queryset = PurchaseInvoice.objects.all().order_by("-id")
-
-    serializer_class = PurchaseInvoiceSerializer
-
-
-    def perform_create(self, serializer):
-
-        with transaction.atomic():
-
-            purchase_line = serializer.validated_data.get(
-                "purchase_order_line"
-            )
-
-            invoiced_quantity = serializer.validated_data.get(
-                "invoiced_quantity"
-            )
-
-            if not purchase_line:
-                raise ValidationError(
-                    "Purchase order line is required."
-                )
-
-            if invoiced_quantity is None:
-                raise ValidationError(
-                    "Invoiced quantity is required."
-                )
-
-            validate_purchase_invoice(
-                purchase_line=purchase_line,
-                invoiced_quantity=invoiced_quantity,
-            )
-
-            invoice = serializer.save()
-
-            purchase_line.invoiced_quantity += invoiced_quantity
-
-            purchase_line.save(
-                update_fields=["invoiced_quantity"]
-            )
-
-            log_activity(
-                user=self.request.user,
-                action="CREATE",
-                module="PurchaseInvoice",
-                reference_id=invoice.id,
-                description="Purchase invoice recorded",
-                ip_address=self.request.META.get(
-                    "REMOTE_ADDR"
-                ),
-            )
-
-class RawStockMovementViewSet(viewsets.ModelViewSet):
-
-    permission_classes = [IsEmployee]
-
-    queryset = RawStockMovement.objects.all().order_by("-id")
-
-    serializer_class = RawStockMovementSerializer
+            "detail":
+            "Purchase order cancelled."
+        })

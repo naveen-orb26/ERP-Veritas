@@ -18,30 +18,91 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 
-const navItems = [
+const navigation = [
+
   {
-    title: "Dashboard",
-    icon: LayoutDashboard,
+
+    section: "Procurement",
+
+    items: [
+
+      {
+        title: "Vendors",
+        href: "/vendors",
+      },
+
+      {
+        title: "Raw Materials",
+        href: "/raw-materials",
+      },
+
+      {
+        title: "Material Sources",
+        href: "/material-sources",
+      },
+
+      {
+        title: "GRNs",
+        href: "/grns",
+      },
+    ],
   },
+
+
   {
-    title: "Sales",
-    icon: ShoppingCart,
+
+    section: "Inventory",
+
+    items: [
+
+      {
+        title: "Inventory",
+        href: "/inventory",
+      },
+
+      {
+        title: "Stock Ledger",
+        href: "/inventory/ledger",
+      },
+
+      {
+        title: "Warehouses",
+        href: "/warehouses",
+      },
+    ],
   },
+
+
   {
-    title: "Production",
-    icon: Factory,
+
+    section: "Sales",
+
+    items: [
+
+      {
+        title: "Customers",
+        href: "/customers",
+      },
+    ],
   },
+
+
   {
-    title: "Packing",
-    icon: Package,
-  },
-  {
-    title: "Dispatch",
-    icon: Truck,
-  },
-  {
-    title: "Reports",
-    icon: BarChart3,
+
+    section: "Production",
+
+    items: [
+
+      {
+        title: "Production",
+        href: "/production",
+      },
+
+      {
+        title: "Packing",
+        href: "/packing",
+      },
+    ],
   },
 ]
 
@@ -138,46 +199,62 @@ export function MobileSidebar() {
 
           <nav className="flex flex-col gap-2">
 
-            {navItems.map((item) => {
-              const Icon = item.icon
+            {navigation.map((group) => (
 
-              return (
-                <button
-                  key={item.title}
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                    rounded-2xl
-                    px-4
-                    py-3
-                    transition-all
-                    duration-300
-                    hover:bg-lime-400/10
-                  "
-                >
+  <div
+    key={group.section}
+    className="mb-6"
+  >
 
-                  <Icon
-                    className="
-                      h-5
-                      w-5
-                      text-zinc-400
-                    "
-                  />
+    <p
+      className="
+        mb-2
+        px-4
+        text-xs
+        font-semibold
+        uppercase
+        tracking-wider
+        text-zinc-500
+      "
+    >
+      {group.section}
+    </p>
 
-                  <span
-                    className="
-                      font-medium
-                      text-zinc-300
-                    "
-                  >
-                    {item.title}
-                  </span>
+    <div
+      className="
+        flex
+        flex-col
+        gap-1
+      "
+    >
 
-                </button>
-              )
-            })}
+      {group.items.map((item) => (
 
+        <a
+
+          key={item.title}
+
+          href={item.href}
+
+          className="
+            rounded-2xl
+            px-4
+            py-3
+            text-sm
+            font-medium
+            text-zinc-300
+            transition-all
+            hover:bg-lime-400/10
+          "
+        >
+          {item.title}
+        </a>
+      ))}
+
+    </div>
+
+  </div>
+))}
           </nav>
 
         </SheetContent>

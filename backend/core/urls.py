@@ -29,26 +29,21 @@ from sales.views import SalesOrderViewSet
 from invoicing.views import SalesInvoiceViewSet
 from invoicing.views import PaymentViewSet
 
-from purchases.views import SupplierViewSet
-from purchases.views import PurchaseOrderViewSet
-from purchases.views import PurchaseInvoiceViewSet
-from purchases.views import GRNViewSet
-from purchases.views import RawStockMovementViewSet
 
-from reporting.views import (
-    RawMaterialStockSummaryView,
-    FinishedGoodsStockSummaryView,
-    DispatchSummaryView,
-    SalesOrderProgressView,
-    OutstandingPaymentsView,
-    PurchaseSummaryView,
+# from reporting.views import (
+#     # RawMaterialStockSummaryView,
+#     FinishedGoodsStockSummaryView,
+#     DispatchSummaryView,
+#     SalesOrderProgressView,
+#     OutstandingPaymentsView,
+#     # PurchaseSummaryView,
 
-    LowStockAlertView,
-    OrderDelayReportView,
-    AgingInventoryView,
-    ProductionDispatchBalanceView,
-    DailyProductionReportView,
-)
+#     LowStockAlertView,
+#     OrderDelayReportView,
+#     AgingInventoryView,
+#     ProductionDispatchBalanceView,
+#     DailyProductionReportView,
+# )
 
 from raw_materials.views import (RawMaterialViewSet)
 
@@ -81,11 +76,7 @@ router.register(r"sales-orders", SalesOrderViewSet, basename="sales-order")
 router.register(r"invoices", SalesInvoiceViewSet, basename="invoice")
 router.register(r"payments", PaymentViewSet, basename="payment")
 
-router.register(r"suppliers", SupplierViewSet, basename="supplier")
-router.register(r"purchase-orders", PurchaseOrderViewSet, basename="purchase-order")
-router.register(r"purchase-invoices", PurchaseInvoiceViewSet, basename="purchase-invoice")
-router.register(r"grn", GRNViewSet, basename="grn")
-router.register(r"raw-stock", RawStockMovementViewSet, basename="raw-stock-movement")
+
 
 router.register(r"raw-materials", RawMaterialViewSet,)
 router.register(r"recipes",RecipeViewSet,)
@@ -98,17 +89,17 @@ urlpatterns = [
     # production routes
     path('api/', include(router.urls)),
     path("api/packing-entry/", PackingEntryView.as_view()),
-    path( "api/reports/raw-material-stock/", RawMaterialStockSummaryView.as_view(),),
-    path("api/reports/finished-goods-stock/", FinishedGoodsStockSummaryView.as_view(),),
-    path("api/reports/dispatch-summary/", DispatchSummaryView.as_view(),),
-    path("api/reports/sales-order-progress/", SalesOrderProgressView.as_view(),),
-    path("api/reports/outstanding-payments/", OutstandingPaymentsView.as_view(),),
-    path("api/reports/purchase-summary/", PurchaseSummaryView.as_view(),),
-    path("api/reports/low-stock/", LowStockAlertView.as_view()),
-    path("api/reports/order-delay/", OrderDelayReportView.as_view()),
-    path("api/reports/aging-inventory/", AgingInventoryView.as_view()),
-    path("api/reports/production-dispatch/", ProductionDispatchBalanceView.as_view()),
-    path("api/reports/daily-production/", DailyProductionReportView.as_view()),
+    # path( "api/reports/raw-material-stock/", RawMaterialStockSummaryView.as_view(),),
+    # path("api/reports/finished-goods-stock/", FinishedGoodsStockSummaryView.as_view(),),
+    # path("api/reports/dispatch-summary/", DispatchSummaryView.as_view(),),
+    # path("api/reports/sales-order-progress/", SalesOrderProgressView.as_view(),),
+    # path("api/reports/outstanding-payments/", OutstandingPaymentsView.as_view(),),
+    # # path("api/reports/purchase-summary/", PurchaseSummaryView.as_view(),),
+    # path("api/reports/low-stock/", LowStockAlertView.as_view()),
+    # path("api/reports/order-delay/", OrderDelayReportView.as_view()),
+    # path("api/reports/aging-inventory/", AgingInventoryView.as_view()),
+    # path("api/reports/production-dispatch/", ProductionDispatchBalanceView.as_view()),
+    # path("api/reports/daily-production/", DailyProductionReportView.as_view()),
     path("api/dashboard/", include("dashboard.urls"),),
     path("api/auth/", include("authentication.urls"),),
     path("api/", include("customers.urls"),),
@@ -119,6 +110,7 @@ urlpatterns = [
     path("api/",include("raw_materials.urls")),
     path("api/",include("vendors.urls")),
     path("api/",include("grn.urls")),
+    path("api/",include("purchases.urls")),
 ]
 
 urlpatterns += static(

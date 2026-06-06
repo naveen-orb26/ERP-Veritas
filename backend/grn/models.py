@@ -30,6 +30,19 @@ class GRN(models.Model):
         editable=False
     )
 
+    purchase_order = models.ForeignKey(
+
+        "purchases.PurchaseOrder",
+
+        on_delete=models.PROTECT,
+
+        related_name="grns",
+
+        null=True,
+
+        blank=True,
+    )
+
     vendor = models.ForeignKey(
 
         Vendor,
@@ -142,7 +155,7 @@ class GRN(models.Model):
 # =====================================================
 
 class GRNLine(models.Model):
-
+        
     grn = models.ForeignKey(
 
         GRN,

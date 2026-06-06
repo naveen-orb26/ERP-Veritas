@@ -22,9 +22,38 @@ import {
 
 } from "@/lib/api/warehouses-server"
 
+import {
 
-export default async function
-CreateGRNPage() {
+  getPurchaseOrderServer,
+
+} from "@/lib/api/purchase-orders-server"
+
+type Props = {
+
+    searchParams: Promise<{
+      po?: string
+    }>
+  }
+
+  export default async function
+  CreateGRNPage({
+
+    searchParams,
+  }: Props) {
+    
+  const { po } =
+  await searchParams
+
+  let purchaseOrder = null
+
+  if (po) {
+
+    purchaseOrder =
+
+      await getPurchaseOrderServer(
+        po
+      )
+  }
 
   const [
 
@@ -113,6 +142,10 @@ CreateGRNPage() {
       >
 
         <GRNForm
+
+          purchaseOrder={
+            purchaseOrder
+          }
 
           vendors={
             vendors

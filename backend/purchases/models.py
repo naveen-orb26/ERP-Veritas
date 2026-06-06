@@ -1,208 +1,416 @@
 from django.db import models
-from django.core.exceptions import ValidationError
-from product_master.models import Product
 
+from decimal import Decimal
 
-class Supplier(models.Model):
-
-    name = models.CharField(
-        max_length=255
-    )
-
-    address = models.TextField()
-
-    gst_number = models.CharField(
-        max_length=50,
-        unique=True
-    )
-
-    payment_terms = models.CharField(
-        max_length=100,
-        blank=True
-    )
-
-    contact_numbers = models.JSONField(
-        default=list
-    )
-
-    contact_emails = models.JSONField(
-        default=list
-    )
-
-    is_active = models.BooleanField(
-        default=True
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    def __str__(self):
-        return self.name
-
+from django.db import models
 
 from django.utils import timezone
 
+from django.core.exceptions import (
+    ValidationError
+)
+
+from vendors.models import Vendor
+
+from raw_materials.models import (
+    MaterialSource
+)
+
+from inventory.models import (
+    Warehouse
+)
+
+
+# =====================================================
+# PURCHASE ORDER
+# =====================================================
 
 class PurchaseOrder(models.Model):
 
+    STATUS_CHOICES = [
+
+        ("DRAFT", "Draft"),
+
+        ("APPROVED", "Approved"),
+
+        (
+            "PARTIALLY_RECEIVED",
+            "Partially Received"
+        ),
+
+        ("CLOSED", "Closed"),
+
+        ("CANCELLED", "Cancelled"),
+        ("RECEIVED", "Received"),
+    ]
+
     po_number = models.CharField(
+
         max_length=50,
-        unique=True
+
+        unique=True,
+
+        editable=False
     )
 
-    supplier = models.ForeignKey(
-        Supplier,
+    vendor = models.ForeignKey(
+
+        Vendor,
+
         on_delete=models.PROTECT,
+
         related_name="purchase_orders"
     )
 
     po_date = models.DateField(
+
         default=timezone.now
     )
 
-    remarks = models.TextField(blank=True)
+    vendor_pr_number = models.CharField(
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+        max_length=100,
 
-    def __str__(self):
-        return self.po_number
-    
-
-
-class PurchaseInvoice(models.Model):
-
-    STATUS_CHOICES = [
-        ("UNPAID", "Unpaid"),
-        ("PARTIAL", "Partial"),
-        ("PAID", "Paid"),
-    ]
-
-    supplier = models.ForeignKey(
-        Supplier,
-        on_delete=models.PROTECT,
-        related_name="purchase_invoices"
-    )
-
-    purchase_order = models.ForeignKey(
-        PurchaseOrder,
-        on_delete=models.PROTECT,
-        related_name="invoices"
-    )
-
-    invoice_number = models.CharField(
-        max_length=50,
-        unique=True
-    )
-
-    invoice_date = models.DateField(
-        default=timezone.now
-    )
-
-    total_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2
-    )
-
-    pdf_path = models.CharField(
-        max_length=255,
         blank=True
     )
 
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="UNPAID"
+    billing_address = models.TextField()
+
+    shipping_address = models.TextField()
+
+    company_gstin = models.CharField(
+
+        max_length=20
     )
 
-    remarks = models.TextField(blank=True)
+    vendor_gstin = models.CharField(
+
+        max_length=20
+    )
+
+    lead_days = models.PositiveIntegerField(
+
+        default=0
+    )
+
+    expected_delivery_date = models.DateField(
+
+        null=True,
+
+        blank=True
+    )
+
+    subtotal = models.DecimalField(
+
+        max_digits=18,
+
+        decimal_places=2,
+
+        default=0
+    )
+
+    total_tax_amount = models.DecimalField(
+
+        max_digits=18,
+
+        decimal_places=2,
+
+        default=0
+    )
+
+    grand_total = models.DecimalField(
+
+        max_digits=18,
+
+        decimal_places=2,
+
+        default=0
+    )
+
+    status = models.CharField(
+
+        max_length=30,
+
+        choices=STATUS_CHOICES,
+
+        default="DRAFT"
+    )
+
+    remarks = models.TextField(
+        blank=True
+    )
 
     created_at = models.DateTimeField(
         auto_now_add=True
     )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    def save(self, *args, **kwargs):
+
+        if not self.po_number:
+
+            year = timezone.now().year
+
+            last_po = (
+
+                PurchaseOrder.objects
+
+                .filter(
+                    po_number__startswith=
+                    f"PO-{year}"
+                )
+
+                .order_by("-id")
+
+                .first()
+            )
+
+            next_number = 1
+
+            if last_po:
+
+                try:
+
+                    next_number = (
+
+                        int(
+
+                            last_po.po_number
+                            .split("-")[-1]
+                        )
+
+                        + 1
+                    )
+
+                except Exception:
+
+                    next_number = 1
+
+            self.po_number = (
+
+                f"PO-{year}-"
+
+                f"{str(next_number).zfill(4)}"
+            )
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.invoice_number
+
+        return self.po_number
 
 
+# =====================================================
+# PURCHASE ORDER LINE
+# =====================================================
 
-class GRN(models.Model):
+class PurchaseOrderLine(models.Model):
 
-    purchase_invoice = models.ForeignKey(
-        PurchaseInvoice,
+    purchase_order = models.ForeignKey(
+
+        PurchaseOrder,
+
+        on_delete=models.CASCADE,
+
+        related_name="lines"
+    )
+
+    material_source = models.ForeignKey(
+
+        MaterialSource,
+
         on_delete=models.PROTECT,
-        related_name="grns"
+
+        related_name="purchase_order_lines"
     )
 
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.PROTECT
+    warehouse = models.ForeignKey(
+
+        Warehouse,
+
+        on_delete=models.PROTECT,
+
+        related_name="purchase_order_lines"
     )
 
-    received_quantity = models.PositiveIntegerField()
+    ordered_quantity = models.DecimalField(
 
-    accepted_quantity = models.PositiveIntegerField()
+        max_digits=18,
 
-    received_date = models.DateField(
-        default=timezone.now
+        decimal_places=4
     )
 
-    remarks = models.TextField(blank=True)
+    received_quantity = models.DecimalField(
+
+        max_digits=18,
+
+        decimal_places=4,
+
+        default=0
+    )
+
+    pending_quantity = models.DecimalField(
+
+        max_digits=18,
+
+        decimal_places=4,
+
+        default=0
+    )
+
+    unit = models.CharField(
+
+        max_length=30
+    )
+
+    unit_cost = models.DecimalField(
+
+        max_digits=18,
+
+        decimal_places=2
+    )
+
+    cgst_percent = models.DecimalField(
+
+        max_digits=5,
+
+        decimal_places=2,
+
+        default=0
+    )
+
+    sgst_percent = models.DecimalField(
+
+        max_digits=5,
+
+        decimal_places=2,
+
+        default=0
+    )
+
+    igst_percent = models.DecimalField(
+
+        max_digits=5,
+
+        decimal_places=2,
+
+        default=0
+    )
+
+    tax_amount = models.DecimalField(
+
+        max_digits=18,
+
+        decimal_places=2,
+
+        default=0
+    )
+
+    line_total = models.DecimalField(
+
+        max_digits=18,
+
+        decimal_places=2,
+
+        default=0
+    )
+
+    remarks = models.TextField(
+        blank=True
+    )
 
     created_at = models.DateTimeField(
         auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
     )
 
     def clean(self):
 
-        if self.accepted_quantity > self.received_quantity:
+        if self.ordered_quantity <= 0:
+
             raise ValidationError(
-                "Accepted quantity cannot exceed received quantity."
+
+                "Ordered quantity "
+                "must be greater "
+                "than zero."
             )
 
+        if self.unit_cost < 0:
+
+            raise ValidationError(
+
+                "Unit cost "
+                "cannot be negative."
+            )
+
+    def save(self, *args, **kwargs):
+
+        self.pending_quantity = (
+
+            Decimal(
+                self.ordered_quantity
+            )
+
+            -
+
+            Decimal(
+                self.received_quantity
+            )
+        )
+
+        subtotal = (
+
+            Decimal(
+                self.ordered_quantity
+            )
+
+            *
+
+            Decimal(
+                self.unit_cost
+            )
+        )
+
+        total_tax_percent = (
+
+            Decimal(self.cgst_percent)
+
+            +
+
+            Decimal(self.sgst_percent)
+
+            +
+
+            Decimal(self.igst_percent)
+        )
+
+        self.tax_amount = (
+
+            subtotal
+            *
+            total_tax_percent
+        ) / Decimal("100")
+
+        self.line_total = (
+
+            subtotal
+            +
+            self.tax_amount
+        )
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"GRN-{self.id}"
-    
 
+        return (
 
-class RawStockMovement(models.Model):
+            f"{self.purchase_order.po_number} | "
 
-    MOVEMENT_CHOICES = [
-        ("PURCHASE_IN", "Purchase In"),
-        ("ADJUSTMENT_IN", "Adjustment In"),
-        ("ADJUSTMENT_OUT", "Adjustment Out"),
-        ("RETURN_IN", "Return In"),
-        ("RETURN_OUT", "Return Out"),
-    ]
-
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.PROTECT
-    )
-
-    movement_type = models.CharField(
-        max_length=20,
-        choices=MOVEMENT_CHOICES
-    )
-
-    quantity = models.PositiveIntegerField()
-
-    date = models.DateField(
-        default=timezone.now
-    )
-
-    reference_id = models.IntegerField(
-        null=True,
-        blank=True
-    )
-
-    remarks = models.TextField(blank=True)
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    def __str__(self):
-        return f"{self.product} | {self.movement_type}"
+            f"{self.material_source.sm_code}"
+        )

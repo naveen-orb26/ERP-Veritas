@@ -130,18 +130,25 @@ EditGRNPage({
         "
       >
 
-        <GRNForm
+            <GRNForm
 
-          grn={grn}
 
-          vendors={vendors}
+      grn={
+          grn
+        }
 
-          materialSources={
-            materialSources
-          }
+      vendors={
+        vendors
+      }
 
-          warehouses={warehouses}
-        />
+      materialSources={
+        materialSources
+      }
+
+      warehouses={
+        warehouses
+      }
+    />
 
       </div>
 

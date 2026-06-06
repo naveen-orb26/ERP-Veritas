@@ -19,6 +19,8 @@ type GRNFormProps = {
 
   grn?: any
 
+  purchaseOrder?: any
+
   vendors: any[]
 
   materialSources: any[]
@@ -31,6 +33,8 @@ export default function
 GRNForm({
 
   grn,
+
+  purchaseOrder,
 
   vendors,
 
@@ -53,10 +57,22 @@ GRNForm({
     useState({
 
       vendor:
-        grn?.vendor || "",
+        grn?.vendor || purchaseOrder?.vendor || "",
+
+      purchase_order:
+
+        grn?.purchase_order
+
+        ||
+
+        purchaseOrder?.id
+
+        ||
+
+        "",
 
       po_number:
-        grn?.po_number || "",
+        grn?.po_number || purchaseOrder?.po_number || purchaseOrder?.po_number || "",
 
       invoice_number:
         grn?.invoice_number || "",
@@ -72,30 +88,85 @@ GRNForm({
 
       lines:
 
-        grn?.lines || [
+  grn?.lines
 
-          {
+  ||
 
-            warehouse:
-              warehouses?.[0]?.id || "",
+  purchaseOrder?.lines?.map(
+    (line: any) => ({
 
-            material_source: "",
+        warehouse:
+          line.warehouse_id
+          ||
+          line.warehouse,
 
-            received_quantity: 0,
+        material_source:
+          line.material_source_id
+          ||
+          line.material_source,
 
-            received_unit: "KG",
+        received_quantity: 0,
 
-            unit_cost: 0,
+        received_unit:
+          line.unit,
 
-            tax_percent: 0,
+        unit_cost:
+          Number(
+            line.unit_cost
+          ),
 
-            tax_amount: 0,
+        tax_percent:
 
-            batch_reference: "",
+          Number(
+            line.cgst_percent || 0
+          )
 
-            remarks: "",
-          }
-        ],
+          +
+
+          Number(
+            line.sgst_percent || 0
+          )
+
+          +
+
+          Number(
+            line.igst_percent || 0
+          ),
+
+        tax_amount: 0,
+
+        batch_reference: "",
+
+        remarks: "",
+      })
+    )
+
+    ||
+
+    [
+
+      {
+
+        warehouse:
+          warehouses?.[0]?.id || "",
+
+        material_source: "",
+
+        received_quantity: 0,
+
+        received_unit: "",
+
+        unit_cost: 0,
+
+        tax_percent: 0,
+
+        tax_amount: 0,
+
+        batch_reference: "",
+
+        remarks: "",
+      }
+    ],
     })
 
 

@@ -15,30 +15,91 @@ import { motion } from "framer-motion"
 
 import { useUI } from "@/providers/ui-provider"
 
-const navItems = [
+const navigation = [
+
   {
-    title: "Dashboard",
-    icon: LayoutDashboard,
+
+    section: "Procurement",
+
+    items: [
+
+      {
+        title: "Vendors",
+        href: "/vendors",
+      },
+
+      {
+        title: "Raw Materials",
+        href: "/raw-materials",
+      },
+
+      {
+        title: "Material Sources",
+        href: "/material-sources",
+      },
+
+      {
+        title: "GRNs",
+        href: "/grns",
+      },
+    ],
   },
+
+
   {
-    title: "Sales",
-    icon: ShoppingCart,
+
+    section: "Inventory",
+
+    items: [
+
+      {
+        title: "Inventory",
+        href: "/inventory",
+      },
+
+      {
+        title: "Stock Ledger",
+        href: "/inventory/ledger",
+      },
+
+      {
+        title: "Warehouses",
+        href: "/warehouses",
+      },
+    ],
   },
+
+
   {
-    title: "Production",
-    icon: Factory,
+
+    section: "Sales",
+
+    items: [
+
+      {
+        title: "Customers",
+        href: "/customers",
+      },
+    ],
   },
+
+
   {
-    title: "Packing",
-    icon: Package,
-  },
-  {
-    title: "Dispatch",
-    icon: Truck,
-  },
-  {
-    title: "Reports",
-    icon: BarChart3,
+
+    section: "Production",
+
+    items: [
+
+      {
+        title: "Production",
+        href: "/production",
+      },
+
+      {
+        title: "Packing",
+        href: "/packing",
+      },
+    ],
   },
 ]
 
@@ -303,103 +364,62 @@ export function Sidebar() {
           "
         >
 
-          {navItems.map((item, index) => {
+          {navigation.map((group) => (
 
-            const Icon =
-              item.icon
+  <div
+    key={group.section}
+    className="mb-6"
+  >
 
-            return (
+    <p
+      className="
+        mb-2
+        px-4
+        text-xs
+        font-semibold
+        uppercase
+        tracking-wider
+        text-zinc-500
+      "
+    >
+      {group.section}
+    </p>
 
-              <motion.button
-                key={item.title}
-                initial={{
-                  opacity: 0,
-                  x: -8,
-                }}
-                animate={{
-                  opacity: 1,
-                  x: 0,
-                }}
-                transition={{
-                  delay:
-                    index * 0.03,
-                }}
-                whileHover={{
-                  x:
-                    sidebarCollapsed
-                      ? 0
-                      : 3,
-                }}
-                className={`
-                  group
-                  flex
-                  h-12
-                  items-center
-                  rounded-2xl
-                  transition-all
-                  duration-300
-                  hover:bg-lime-400/10
+    <div
+      className="
+        flex
+        flex-col
+        gap-1
+      "
+    >
 
-                  ${
-                    sidebarCollapsed
-                      ? "justify-center px-0"
-                      : "px-4"
-                  }
-                `}
-              >
+      {group.items.map((item) => (
 
-                <Icon
-                  className="
-                    h-5
-                    w-5
-                    shrink-0
-                    text-zinc-400
-                    transition-colors
-                    duration-300
-                    group-hover:text-lime-400
-                  "
-                />
+        <a
 
-                <motion.span
-                  animate={{
-                    opacity:
-                      sidebarCollapsed
-                        ? 0
-                        : 1,
+          key={item.title}
 
-                    x:
-                      sidebarCollapsed
-                        ? -10
-                        : 0,
-                  }}
-                  transition={{
-                    duration: 0.16,
-                  }}
-                  className="
-                    ml-3
-                    overflow-hidden
-                    whitespace-nowrap
-                    text-sm
-                    font-medium
-                    text-zinc-300
-                    transition-colors
-                    duration-300
-                    group-hover:text-white
-                  "
-                  style={{
-                    width:
-                      sidebarCollapsed
-                        ? 0
-                        : "auto",
-                  }}
-                >
-                  {item.title}
-                </motion.span>
+          href={item.href}
 
-              </motion.button>
+          className="
+            rounded-2xl
+            px-4
+            py-3
+            text-sm
+            font-medium
+            text-zinc-300
+            transition-all
+            hover:bg-lime-400/10
+          "
+        >
+          {item.title}
+        </a>
+      ))}
 
-            )
-          })}
+    </div>
+
+  </div>
+))}
 
         </nav>
 

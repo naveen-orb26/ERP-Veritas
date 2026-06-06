@@ -3,68 +3,68 @@ from django.db.models import Sum, Case, When, IntegerField
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from purchases.models import RawStockMovement
+
 
 from core.permissions import FinancialAccess
 
 
-class RawMaterialStockSummaryView(APIView):
+# class RawMaterialStockSummaryView(APIView):
 
-    def get(self, request):
+#     def get(self, request):
 
-        movements = (
-            RawStockMovement.objects
-            .values("product__product_name")
-            .annotate(
+#         movements = (
+#             RawStockMovement.objects
+#             .values("product__product_name")
+#             .annotate(
 
-                total_in=Sum(
-                    Case(
-                        When(
-                            movement_type__in=[
-                                "PURCHASE_IN",
-                                "ADJUSTMENT_IN",
-                                "RETURN_IN",
-                            ],
-                            then="quantity",
-                        ),
-                        default=0,
-                        output_field=IntegerField(),
-                    )
-                ),
+#                 total_in=Sum(
+#                     Case(
+#                         When(
+#                             movement_type__in=[
+#                                 "PURCHASE_IN",
+#                                 "ADJUSTMENT_IN",
+#                                 "RETURN_IN",
+#                             ],
+#                             then="quantity",
+#                         ),
+#                         default=0,
+#                         output_field=IntegerField(),
+#                     )
+#                 ),
 
-                total_out=Sum(
-                    Case(
-                        When(
-                            movement_type__in=[
-                                "ADJUSTMENT_OUT",
-                                "RETURN_OUT",
-                            ],
-                            then="quantity",
-                        ),
-                        default=0,
-                        output_field=IntegerField(),
-                    )
-                ),
-            )
-        )
+#                 total_out=Sum(
+#                     Case(
+#                         When(
+#                             movement_type__in=[
+#                                 "ADJUSTMENT_OUT",
+#                                 "RETURN_OUT",
+#                             ],
+#                             then="quantity",
+#                         ),
+#                         default=0,
+#                         output_field=IntegerField(),
+#                     )
+#                 ),
+#             )
+#         )
 
-        result = []
+#         result = []
 
-        for row in movements:
+#         for row in movements:
 
-            total_in = row["total_in"] or 0
-            total_out = row["total_out"] or 0
+#             total_in = row["total_in"] or 0
+#             total_out = row["total_out"] or 0
 
-            result.append(
-                {
-                    "product": row["product__product_name"],
-                    "total_in": total_in,
-                    "total_out": total_out,
-                    "current_stock": total_in - total_out,
-                }
-            )
+#             result.append(
+#                 {
+#                     "product": row["product__product_name"],
+#                     "total_in": total_in,
+#                     "total_out": total_out,
+#                     "current_stock": total_in - total_out,
+#                 }
+#             )
 
-        return Response(result)
+#         return Response(result)
     
 
 from django.db.models import Sum, Count

@@ -1,5 +1,6 @@
 from django.db import transaction
 
+from purchases.models import PurchaseOrder
 from rest_framework import serializers
 
 from django.core.exceptions import (
@@ -148,6 +149,11 @@ class GRNListSerializer(
         read_only=True
     )
 
+    purchase_order_number = serializers.CharField(
+        source="purchase_order.po_number",
+        read_only=True
+    )
+        
     class Meta:
 
         model = GRN
@@ -155,6 +161,8 @@ class GRNListSerializer(
         fields = [
 
             "id",
+
+            "purchase_order_number",
 
             "grn_number",
 
@@ -188,6 +196,11 @@ class GRNDetailSerializer(
         read_only=True
     )
 
+    purchase_order_number = serializers.CharField(
+        source="purchase_order.po_number",
+        read_only=True
+        )
+
     lines = GRNLineSerializer(
 
         many=True,
@@ -202,6 +215,10 @@ class GRNDetailSerializer(
         fields = [
 
             "id",
+
+            "purchase_order",
+
+            "purchase_order_number",
 
             "grn_number",
 
@@ -240,6 +257,13 @@ class GRNCreateUpdateSerializer(
     serializers.ModelSerializer
 ):
 
+    purchase_order = serializers.PrimaryKeyRelatedField(
+
+        queryset = PurchaseOrder.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+        
     lines = GRNLineSerializer(
 
         many=True
@@ -252,6 +276,8 @@ class GRNCreateUpdateSerializer(
         fields = [
 
             "id",
+
+            "purchase_order",
 
             "vendor",
 
@@ -316,6 +342,53 @@ class GRNCreateUpdateSerializer(
                 "sources found: "
                 f"{', '.join(duplicate_materials)}"
             )
+
+
+        purchase_order = attrs.get(
+            "purchase_order"
+        )
+
+        if purchase_order:
+
+            for line in lines:
+
+                try:
+
+                    po_line = (
+                        purchase_order.lines.get(
+                            material_source=
+                            line["material_source"]
+                        )
+                    )
+
+                except Exception:
+
+                    raise serializers.ValidationError(
+
+                        f"Material "
+                        f"{line['material_source']}"
+                        f" does not exist in "
+                        f"selected Purchase Order."
+                    )
+
+                received_qty = (
+                    line["received_quantity"]
+                )
+
+                if (
+                    received_qty
+                    >
+                    po_line.pending_quantity
+                ):
+
+                    raise serializers.ValidationError(
+
+                        f"Cannot receive "
+                        f"{received_qty}. "
+                        f"Only "
+                        f"{po_line.pending_quantity} "
+                        f"remaining in PO."
+                    )
 
         return attrs
 

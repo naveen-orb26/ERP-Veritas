@@ -16,6 +16,11 @@ from .serializers import (
     GRNCreateUpdateSerializer,
 )
 
+from purchases.models import (
+    PurchaseOrder,
+    PurchaseOrderLine,
+)
+
 from rest_framework.decorators import (
     action
 )
@@ -78,6 +83,69 @@ class GRNViewSet(
         grn.status = "APPROVED"
         grn.save()
 
+        # =====================================
+        # UPDATE PURCHASE ORDER RECEIPTS
+        # =====================================
+
+        if grn.purchase_order:
+
+            po = grn.purchase_order
+
+            for grn_line in grn.lines.all():
+
+                try:
+
+                    po_line = (
+
+                        po.lines.get(
+                            material_source=
+                            grn_line.material_source
+                        )
+                    )
+
+                except PurchaseOrderLine.DoesNotExist:
+
+                    continue
+
+                po_line.received_quantity += (
+                    grn_line.received_quantity
+                )
+
+                po_line.pending_quantity = (
+
+                    po_line.ordered_quantity
+                    -
+                    po_line.received_quantity
+                )
+
+                if po_line.pending_quantity < 0:
+
+                    po_line.pending_quantity = 0
+
+                po_line.save()
+
+            all_lines_received = True
+
+            for line in po.lines.all():
+
+                if line.pending_quantity > 0:
+
+                    all_lines_received = False
+
+                    break
+
+
+            if all_lines_received:
+
+                po.status = "RECEIVED"
+
+            else:
+
+                po.status = (
+                    "PARTIALLY_RECEIVED"
+                )
+
+            po.save()
         apply_grn_inventory(grn)
 
         return Response({
