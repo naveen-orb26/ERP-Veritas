@@ -170,6 +170,68 @@ class GRNViewSet(
 
         reverse_grn_inventory(grn)
 
+        po = grn.purchase_order
+
+        for grn_line in grn.lines.all():
+
+            try:
+
+                po_line = (
+
+                    grn.purchase_order.lines.get(
+
+                        material_source=
+                        grn_line.material_source
+                    )
+                )
+
+            except PurchaseOrderLine.DoesNotExist:
+
+                continue
+
+            po_line.received_quantity -= (
+                grn_line.received_quantity
+            )
+
+            if po_line.received_quantity < 0:
+                po_line.received_quantity = 0
+
+            po_line.pending_quantity = (
+                po_line.ordered_quantity
+                -
+                po_line.received_quantity
+            )
+
+            po_line.save()
+
+        all_received = True
+        any_received = False
+
+        for line in po.lines.all():
+
+            if line.received_quantity > 0:
+
+                any_received = True
+
+            if line.pending_quantity > 0:
+
+                all_received = False
+
+
+        if all_received:
+
+            po.status = "RECEIVED"
+
+        elif any_received:
+
+            po.status = "PARTIALLY_RECEIVED"
+
+        else:
+
+            po.status = "APPROVED"
+
+        po.save()
+
         grn.status = "CANCELLED"
         grn.save()
 

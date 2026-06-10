@@ -2,10 +2,12 @@
 
 import {
   useRouter,
+  useSearchParams,
 } from "next/navigation"
 
 import {
   useState,
+  useEffect,
 } from "react"
 
 const API_BASE_URL =
@@ -17,6 +19,12 @@ CreateProductForm() {
 
   const router =
     useRouter()
+
+  const searchParams =
+    useSearchParams()
+
+  const sampleId =
+    searchParams.get("sample")
 
   const [
     isSubmitting,
@@ -75,7 +83,84 @@ CreateProductForm() {
     image: null as File | null,
 
     is_active: true,
+
+    development_sample: null,
   })
+
+  useEffect(() => {
+
+    if (!sampleId) {
+      return
+    }
+
+    async function loadSample() {
+
+      try {
+
+        const response =
+          await fetch(
+            `${API_BASE_URL}/api/development-samples/${sampleId}/`,
+            {
+              credentials: "include",
+            }
+          )
+
+        if (!response.ok) {
+          return
+        }
+
+       
+        const sample =
+          await response.json()
+
+          console.log(
+          "Sample Prefill",
+          sample
+          )
+        setFormData((prev) => ({
+
+          ...prev,
+
+          development_sample:
+            sample.id,
+
+          sr_number:
+            sample.reference_code || "",
+          product_name:
+            sample.product_name || "",
+
+          description:
+            sample.description || "",
+
+          category:
+            sample.category || "",
+
+          size_or_variant:
+            sample.size_or_variant || "",
+
+          color:
+            sample.color || "",
+
+          base_unit:
+            sample.base_unit || "PCS",
+
+          units_per_base_unit:
+            sample.units_per_base_unit || 1,
+        }))
+      }
+
+      catch (error) {
+
+        console.error(
+          "Failed to load sample",
+          error
+        )
+      }
+    }
+
+    loadSample()
+
+  }, [sampleId])
 
   function
   renderError(
@@ -222,6 +307,21 @@ CreateProductForm() {
         "sr_number",
         formData.sr_number
       )
+
+      if (
+        formData.development_sample
+      ) {
+
+        payload.append(
+
+          "development_sample",
+
+          String(
+            formData
+              .development_sample
+          )
+        )
+      }
 
       payload.append(
         "product_name",

@@ -18,7 +18,15 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from packing.views import InspectionViewSet, PacketViewSet, PackingEntryView
-from production.views import ProductionViewSet
+
+
+from production.views import (
+    ProductionViewSet,
+    ProductionRequestViewSet,
+    ProductionBatchViewSet,
+    BatchStageViewSet,
+)
+
 from finished_stock.views import (
     FinishedStockPacketViewSet,
     FinishedStockMovementViewSet,
@@ -62,7 +70,11 @@ from sampling.views import (DevelopmentSampleViewSet)
 
 router = DefaultRouter()
 
+router.register(r"production-requests", ProductionRequestViewSet,basename="production-request",)
 router.register(r'production', ProductionViewSet, basename='production')
+router.register(r"production-batches",ProductionBatchViewSet,basename="production-batch",)
+router.register(r"batch-stages",BatchStageViewSet,basename="batch-stage",)
+
 
 router.register(r"inspections", InspectionViewSet, basename="inspection")
 router.register(r"packets", PacketViewSet, basename="packet")

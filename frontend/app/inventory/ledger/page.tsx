@@ -1,9 +1,11 @@
+import Link
+from "next/link"
+
 import {
 
   getStockLedgerServer,
 
 } from "@/lib/api/stock-ledger-server"
-
 
 export default async function
 StockLedgerPage() {
@@ -15,9 +17,28 @@ StockLedgerPage() {
 
     <div
       className="
+        p-6
         space-y-6
       "
     >
+
+      <Link
+
+        href="/inventory"
+
+        className="
+          inline-flex
+          items-center
+          gap-2
+          rounded-xl
+          border
+          px-4
+          py-2
+          text-sm
+        "
+      >
+        ← Back to Inventory
+      </Link>
 
       <div>
 
@@ -36,263 +57,176 @@ StockLedgerPage() {
             text-zinc-500
           "
         >
-          Inventory movement audit trail
+          Complete inventory movement history
         </p>
 
       </div>
 
-
       <div
         className="
-          overflow-x-auto
           rounded-2xl
           border
-          border-zinc-200
-          bg-white
-          dark:border-zinc-800
-          dark:bg-zinc-900
+          overflow-hidden
         "
       >
 
         <table
           className="
-            min-w-full
-            divide-y
-            divide-zinc-200
-            dark:divide-zinc-800
+            w-full
           "
         >
 
-          <thead
-            className="
-              bg-zinc-50
-              dark:bg-zinc-950
-            "
-          >
+          <thead>
 
-            <tr>
+            <tr
+              className="
+                border-b
+              "
+            >
 
-              {
-                [
+              <th className="p-3 text-left">
+                Date
+              </th>
 
-                  "Date",
+              <th className="p-3 text-left">
+                Warehouse
+              </th>
 
-                  "SM Code",
+              <th className="p-3 text-left">
+                SM Code
+              </th>
 
-                  "Material",
+              <th className="p-3 text-left">
+                Material
+              </th>
 
-                  "Warehouse",
+              <th className="p-3 text-left">
+                Movement
+              </th>
 
-                  "Movement",
+              <th className="p-3 text-left">
+                Direction
+              </th>
 
-                  "Direction",
+              <th className="p-3 text-left">
+                Qty
+              </th>
 
-                  "Quantity",
+              <th className="p-3 text-left">
+                Reference
+              </th>
 
-                  "Reference",
-
-                  "User",
-                ]
-
-                .map((header) => (
-
-                  <th
-
-                    key={header}
-
-                    className="
-                      px-6
-                      py-4
-                      text-left
-                      text-xs
-                      font-semibold
-                      uppercase
-                      tracking-wide
-                      text-zinc-500
-                    "
-                  >
-                    {header}
-                  </th>
-                ))
-              }
+              <th className="p-3 text-left">
+                Remarks
+              </th>
 
             </tr>
 
           </thead>
 
+          <tbody>
+            {ledger.length === 0 ? (
 
-          <tbody
-            className="
-              divide-y
-              divide-zinc-100
-              dark:divide-zinc-800
-            "
-          >
+            <tr>
 
-            {
-              ledger.map(
-                (entry: any) => (
+              <td
+                colSpan={9}
+                className="
+                  p-12
+                  text-center
+                  text-zinc-500
+                "
+              >
+                No stock movements found
+              </td>
 
-                  <tr
-                    key={entry.id}
-                  >
+            </tr>
 
-                    <td
-                      className="
-                        px-6
-                        py-4
-                        text-sm
-                      "
-                    >
-                      {
+          ) : (
+            ledger.map(
+              (entry: any) => (
+
+                <tr
+                  key={entry.id}
+                  className="
+                    border-b
+                  "
+                >
+
+                  <td className="p-3">
+                    {
+                      new Date(
                         entry.movement_date
+                      ).toLocaleString()
+                    }
+                  </td>
+
+                  <td className="p-3">
+                    {
+                      entry.warehouse_name
+                    }
+                  </td>
+
+                  <td className="p-3">
+                    {entry.sm_code}
+                  </td>
+
+                  <td className="p-3">
+                    {
+                      entry.material_name
+                    }
+                  </td>
+
+                  <td className="p-3">
+                    {
+                      entry.movement_type
+                    }
+                  </td>
+
+                  <td
+                    className={`
+
+                      p-3
+                      font-medium
+
+                      ${
+                        entry.direction === "IN"
+
+                          ? "text-green-600"
+
+                          : "text-red-600"
                       }
-                    </td>
+                    `}
+                  >
+                    {entry.direction}
+                  </td>
 
+                  <td className="p-3">
+                    {entry.quantity}
+                  </td>
 
-                    <td
-                      className="
-                        px-6
-                        py-4
-                        text-sm
-                        font-medium
-                      "
-                    >
-                      {
-                        entry.sm_code
-                      }
-                    </td>
+                  <td className="p-3">
 
+                    {
+                      entry.reference_type
+                    }
 
-                    <td
-                      className="
-                        px-6
-                        py-4
-                        text-sm
-                      "
-                    >
-                      {
-                        entry.material_name
-                      }
-                    </td>
+                    {" "}
 
+                    {
+                      entry.reference_id
+                    }
 
-                    <td
-                      className="
-                        px-6
-                        py-4
-                        text-sm
-                      "
-                    >
-                      {
-                        entry.warehouse_name
-                      }
-                    </td>
+                  </td>
 
+                  <td className="p-3">
+                    {entry.remarks}
+                  </td>
 
-                    <td
-                      className="
-                        px-6
-                        py-4
-                        text-sm
-                      "
-                    >
-                      {
-                        entry.movement_type
-                      }
-                    </td>
-
-
-                    <td
-                      className="
-                        px-6
-                        py-4
-                      "
-                    >
-
-                      <div
-                        className={`
-
-                          inline-flex
-                          items-center
-                          rounded-full
-                          px-3
-                          py-1
-                          text-xs
-                          font-semibold
-
-                          ${
-
-                            entry.direction === "IN"
-
-                              ? `
-                                bg-green-100
-                                text-green-700
-                              `
-
-                              : `
-                                bg-red-100
-                                text-red-700
-                              `
-                          }
-                        `}
-                      >
-
-                        {
-                          entry.direction
-                        }
-
-                      </div>
-
-                    </td>
-
-
-                    <td
-                      className="
-                        px-6
-                        py-4
-                        text-sm
-                        font-medium
-                      "
-                    >
-                      {
-                        entry.quantity
-                      }
-                    </td>
-
-
-                    <td
-                      className="
-                        px-6
-                        py-4
-                        text-sm
-                      "
-                    >
-                      {
-
-                        entry.reference_type
-
-                        || "-"
-                      }
-                    </td>
-
-
-                    <td
-                      className="
-                        px-6
-                        py-4
-                        text-sm
-                      "
-                    >
-                      {
-                        entry.created_by_name
-                      }
-                    </td>
-
-                  </tr>
-                )
+                </tr>
               )
-            }
+            )
+          )}
 
           </tbody>
 

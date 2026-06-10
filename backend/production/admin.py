@@ -1,16 +1,63 @@
 from django.contrib import admin
-from .models import Production
+from .models import (
+    Production,
+    ProductionRequest,
+    ProductionBatch,
+    JobCardMaterial,
+)
 
 
 @admin.register(Production)
 class ProductionAdmin(admin.ModelAdmin):
+
     list_display = (
-        "batch_number",
+
+        "job_card_number",
+
         "product",
-        "sales_order_line",
+
+        "status",
+
         "planned_quantity",
+
         "production_date",
-        "created_by",
     )
-    search_fields = ("batch_number",)
-    list_filter = ("production_date",)
+
+    list_filter = (
+
+        "status",
+
+        "production_date",
+    )
+
+    search_fields = (
+
+        "job_card_number",
+
+        "product__sr_number",
+
+        "product__product_name",
+    )
+
+@admin.register(ProductionRequest)
+class ProductionRequestAdmin(admin.ModelAdmin):
+
+    list_display = (
+
+        "id",
+
+        "source_type",
+
+        "requested_quantity",
+
+        "status",
+
+        "created_at",
+    )
+
+    list_filter = (
+
+        "status",
+
+        "source_type",
+    )

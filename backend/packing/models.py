@@ -3,16 +3,24 @@ from django.utils import timezone
 
 from product_master.models import Product
 from sales.models import SalesOrderLine
+from users.models import User
 
-from production.models import Production
 
+from production.models import (
+    Production,
+    ProductionBatch,
+)
 
 class Inspection(models.Model):
 
-    production = models.ForeignKey(
-        Production,
+    batch = models.ForeignKey(
+
+        ProductionBatch,
+
         on_delete=models.CASCADE,
-        related_name="inspections"
+
+        related_name="inspections",
+
     )
 
     accepted_quantity = models.PositiveIntegerField()
@@ -29,8 +37,25 @@ class Inspection(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    inspected_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True
+        )
+
+    @property
+    def total_inspected(self):
+
+        return (
+
+            self.accepted_quantity
+            +
+            (self.rejected_quantity or 0)
+        )
+
     def __str__(self):
-        return f"Inspection-{self.id} | {self.production.batch_number}"
+        return ( f"Inspection-{self.id} | "f"{self.batch.batch_number}" )
     
 
 class Packet(models.Model):
@@ -57,21 +82,10 @@ class Packet(models.Model):
         related_name="packets"
     )
 
-    production = models.ForeignKey(
-        Production,
-        on_delete=models.CASCADE
-    )
-
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.PROTECT
-    )
-
     units_in_packet = models.PositiveIntegerField()
 
     manufacture_date = models.DateField(default=timezone.now)
 
-    batch_number = models.CharField(max_length=30)
 
     allocation_type = models.CharField(
         max_length=10,
@@ -91,3 +105,12 @@ class Packet(models.Model):
 
     def __str__(self):
         return f"Packet-{self.id} | {self.product}"
+    @property
+    def product(self):
+
+        return (
+            self.inspection
+            .batch
+            .production
+            .product
+        )

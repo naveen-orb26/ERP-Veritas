@@ -1,12 +1,32 @@
 from django.db import models
 import os
 
+from sampling.models import DevelopmentSample
+
 class Product(models.Model):
     """
     Product Master model.
     Represents a unique physical product variant identified by SR Number.
     """
 
+    development_sample = models.ForeignKey(
+
+        DevelopmentSample,
+
+        on_delete=models.PROTECT,
+
+        related_name="products",
+
+        null=True,
+
+        blank=True,
+
+        help_text=(
+            "Parent development sample "
+            "from which this SR was created"
+        )
+    )
+        
     sr_number = models.CharField(
         max_length=100,
         unique=True,

@@ -75,6 +75,8 @@ class StockLedger(models.Model):
 
         ("PURCHASE_IN", "Purchase In"),
 
+        ("GRN_REVERSAL","GRN Reversal"),
+
         ("PRODUCTION_CONSUMPTION",
          "Production Consumption"),
 

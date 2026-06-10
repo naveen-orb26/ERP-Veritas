@@ -1,127 +1,103 @@
-from django.db import transaction
-
 from rest_framework import viewsets
-from rest_framework.exceptions import ValidationError
 
-from activity_log.utils import log_activity
-from core.permissions import IsEmployee
+from .serializers import (
+    ProductionRequestSerializer,
+    ProductionSerializer,
+    ProductionBatchSerializer,
+    BatchStageSerializer,
+)
 
-from .models import Production
-from .serializers import ProductionSerializer
+from .models import (
+    ProductionRequest,
+    Production,
+    ProductionBatch,
+    BatchStage,
+)
 
-from .services import validate_production
+# =====================================================
+# PRODUCTION REQUEST
+# =====================================================
 
-# from inventory.services import validate_raw_stock
+class ProductionRequestViewSet(
+    viewsets.ModelViewSet
+):
 
-class ProductionViewSet(viewsets.ModelViewSet):
+    queryset = (
 
-    permission_classes = [IsEmployee]
+        ProductionRequest.objects
 
-    queryset = Production.objects.all().order_by("-id")
+        .all()
 
-    serializer_class = ProductionSerializer
+        .order_by("-id")
+    )
+
+    serializer_class = (
+        ProductionRequestSerializer
+    )
 
 
-    # --------------------------------------------------
-    # CREATE PRODUCTION
-    # --------------------------------------------------
+# =====================================================
+# PRODUCTION / JOB CARD
+# =====================================================
 
-    def perform_create(self, serializer):
+class ProductionViewSet(
+    viewsets.ModelViewSet
+):
 
-        with transaction.atomic():
+    queryset = (
 
-            # ---------------------------------------------
-            # Extract validated data BEFORE save
-            # ---------------------------------------------
+        Production.objects
 
-            sales_line = serializer.validated_data.get(
-                "sales_order_line"
-            )
+        .all()
 
-            quantity = serializer.validated_data.get(
-                "quantity_produced"
-            )
+        .order_by("-id")
+    )
 
-            production_date = serializer.validated_data.get(
-                "production_date"
-            )
+    serializer_class = (
+        ProductionSerializer
+    )
 
-            batch_number = serializer.validated_data.get(
-                "batch_number"
-            )
 
-            if not sales_line:
-                raise ValidationError(
-                    "Sales order line is required."
-                )
+# =====================================================
+# PRODUCTION BATCH
+# =====================================================
 
-            if quantity is None:
-                raise ValidationError(
-                    "Production quantity is required."
-                )
-            
-            validate_raw_stock(
-                product=sales_line.product,
-                required_quantity=quantity,
-            )   
-            # ---------------------------------------------
-            # VALIDATION
-            # ---------------------------------------------
+class ProductionBatchViewSet(
+    viewsets.ModelViewSet
+):
 
-            validate_production(
-                sales_line=sales_line,
-                production_quantity=quantity,
-                production_date=production_date,
-                batch_number=batch_number,
-            )
+    queryset = (
 
-            # ---------------------------------------------
-            # VALIDATE RAW STOCK
-            # ---------------------------------------------
+        ProductionBatch.objects
 
-            validate_raw_stock(
-                product=sales_line.product,
-                required_quantity=quantity * sales_line.product.raw_material_required_per_unit
-            )
+        .all()
 
-            # --------------------------------------------- 
-            # SAVE PRODUCTION
-            # ---------------------------------------------
+        .order_by("-id")
+    )
 
-            production = serializer.save()
+    serializer_class = (
+        ProductionBatchSerializer
+    )
 
-            # ---------------------------------------------
-            # Update produced quantity
-            # ---------------------------------------------
 
-            sales_line.produced_quantity += quantity
+# =====================================================
+# BATCH STAGE
+# =====================================================
 
-            sales_line.save(
-                update_fields=["produced_quantity"]
-            )
+class BatchStageViewSet(
+    viewsets.ModelViewSet
+):
 
-            # ---------------------------------------------
-            # Update order status
-            # ---------------------------------------------
+    queryset = (
 
-            order = sales_line.sales_order
+        BatchStage.objects
 
-            order.update_status_based_on_production()
+        .all()
 
-            # ---------------------------------------------
-            # ACTIVITY LOG
-            # ---------------------------------------------
+        .order_by(
+            "batch_id",
+            "sequence"
+        )
+    )
 
-            log_activity(
-                user=self.request.user,
-                action="CREATE",
-                module="Production",
-                reference_id=production.id,
-                description=(
-                    f"Produced {quantity} units "
-                    f"for SalesOrderLine {sales_line.id}"
-                ),
-                ip_address=self.request.META.get(
-                    "REMOTE_ADDR"
-                ),
-            )
+    serializer_class = (BatchStageSerializer)

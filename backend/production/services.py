@@ -65,3 +65,46 @@ def validate_production(
             raise ValidationError(
                 "Production date cannot be in the future."
             )
+        
+
+from production.models import (
+    JobCardMaterial,
+)
+
+from recipes.models import (
+    Recipe,
+)
+
+def create_job_card_materials(
+    production
+):
+
+    product = production.product
+
+    development_sample = (
+        product.development_sample
+    )
+
+    recipe = getattr(
+        development_sample,
+        "recipe",
+        None
+    )
+
+    if not recipe:
+        return
+
+    for item in recipe.items.all():
+
+        JobCardMaterial.objects.create(
+
+            production=production,
+
+            raw_material=
+                item.raw_material,
+
+            required_quantity=
+                item.quantity,
+
+            unit=item.unit
+        )

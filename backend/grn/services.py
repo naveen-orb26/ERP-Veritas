@@ -183,7 +183,7 @@ def reverse_grn_inventory(
                 line.material_source,
 
             movement_type=
-                "ADJUSTMENT_OUT",
+                "GRN_REVERSAL",
 
             direction="OUT",
 

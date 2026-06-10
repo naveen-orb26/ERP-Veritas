@@ -542,7 +542,15 @@ PurchaseOrderDetailPage({
               </th>
 
               <th className="p-3 text-left">
-                Qty
+                Ordered
+              </th>
+
+              <th className="p-3 text-left">
+                Received
+              </th>
+
+              <th className="p-3 text-left">
+                Pending
               </th>
 
               <th className="p-3 text-left">
@@ -592,9 +600,27 @@ PurchaseOrderDetailPage({
                   </td>
 
                   <td className="p-3">
-                    {
-                      line.ordered_quantity
-                    }
+                    {line.ordered_quantity}
+                  </td>
+
+                  <td
+                    className="
+                      p-3
+                      text-green-600
+                      font-medium
+                    "
+                  >
+                    {line.received_quantity}
+                  </td>
+
+                  <td
+                    className="
+                      p-3
+                      text-orange-600
+                      font-medium
+                    "
+                  >
+                    {line.pending_quantity}
                   </td>
 
                   <td className="p-3">

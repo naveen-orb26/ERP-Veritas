@@ -149,20 +149,23 @@ class PurchaseOrderViewSet(
             self.get_object()
         )
 
-        if (
-            purchase_order.status
-            ==
-            "CLOSED"
-        ):
+        if purchase_order.status in [
+
+            "CLOSED",
+
+            "PARTIALLY_RECEIVED",
+
+            "RECEIVED",
+        ]:
 
             return Response(
 
                 {
                     "detail":
 
-                    "Closed purchase "
-                    "order cannot be "
-                    "cancelled."
+                    "Purchase order with "
+                    "received materials "
+                    "cannot be cancelled."
                 },
 
                 status=(
@@ -170,10 +173,6 @@ class PurchaseOrderViewSet(
                     .HTTP_400_BAD_REQUEST
                 )
             )
-
-        purchase_order.status = (
-            "CANCELLED"
-        )
 
         purchase_order.save()
 
