@@ -22,9 +22,15 @@ from .serializers import (
 
     SalesOrderCreateUpdateSerializer,
 )
+    
+from rest_framework import viewsets
+from .models import SalesOrderLine
+from .serializers import SalesOrderLineSerializer
+
 
 
 class SalesOrderViewSet(
+
     viewsets.ModelViewSet
 ):
 
@@ -286,3 +292,54 @@ class SalesOrderViewSet(
                 "Sales order ready "
                 "for dispatch."
         })
+
+
+class SalesOrderLineViewSet(
+    viewsets.ReadOnlyModelViewSet
+):
+
+    queryset = (
+        SalesOrderLine.objects
+        .select_related(
+            "sales_order",
+            "sales_order__customer",
+            "product",
+        )
+        .order_by("-id")
+    )
+
+    serializer_class = (
+        SalesOrderLineSerializer
+    )
+
+from django.db.models import F
+
+class PendingSalesOrderLineViewSet(
+    viewsets.ReadOnlyModelViewSet
+):
+
+    serializer_class = (
+        SalesOrderLineSerializer
+    )
+
+    queryset = (
+
+        SalesOrderLine.objects
+
+        .select_related(
+            "sales_order",
+            "sales_order__customer",
+            "product",
+        )
+
+        .filter(
+            sales_order__status="CONFIRMED",
+            quantity__gt=F(
+                "fulfilled_quantity"
+            )
+        )
+
+        .order_by(
+            "sales_order__order_date"
+        )
+    )

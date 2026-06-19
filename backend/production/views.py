@@ -1,11 +1,6 @@
 from rest_framework import viewsets
 
-from .serializers import (
-    ProductionRequestSerializer,
-    ProductionSerializer,
-    ProductionBatchSerializer,
-    BatchStageSerializer,
-)
+from core.permissions import IsEmployee
 
 from .models import (
     ProductionRequest,
@@ -14,20 +9,24 @@ from .models import (
     BatchStage,
 )
 
-# =====================================================
-# PRODUCTION REQUEST
-# =====================================================
+from .serializers import (
+    ProductionRequestSerializer,
+    ProductionSerializer,
+    ProductionBatchSerializer,
+    BatchStageSerializer,
+)
+
+from django.core.exceptions import ValidationError
 
 class ProductionRequestViewSet(
     viewsets.ModelViewSet
 ):
 
+    permission_classes = [IsEmployee]
+
     queryset = (
-
         ProductionRequest.objects
-
         .all()
-
         .order_by("-id")
     )
 
@@ -35,20 +34,44 @@ class ProductionRequestViewSet(
         ProductionRequestSerializer
     )
 
+    def perform_destroy(self, instance):
 
-# =====================================================
-# PRODUCTION / JOB CARD
-# =====================================================
+        if instance.job_cards.exists():
+
+            raise ValidationError(
+                "Cannot delete production request "
+                "after job cards exist."
+            )
+
+        instance.delete()
 
 class ProductionViewSet(
     viewsets.ModelViewSet
 ):
 
-    queryset = (
+    permission_classes = [
+        IsEmployee
+    ]
 
+    queryset = (
         Production.objects
 
-        .all()
+        .select_related(
+            "product",
+
+            "production_request",
+
+            "production_request__sales_order_line",
+
+            "production_request__sales_order_line__sales_order",
+
+            "production_request__sales_order_line__sales_order__customer",
+        )
+
+        .prefetch_related(
+            "batches",
+            "materials",
+        )
 
         .order_by("-id")
     )
@@ -57,21 +80,18 @@ class ProductionViewSet(
         ProductionSerializer
     )
 
-
-# =====================================================
-# PRODUCTION BATCH
-# =====================================================
-
 class ProductionBatchViewSet(
     viewsets.ModelViewSet
 ):
 
+    permission_classes = [IsEmployee]
+
     queryset = (
-
         ProductionBatch.objects
-
-        .all()
-
+        .prefetch_related("stages")
+        .select_related(
+            "production",
+        )
         .order_by("-id")
     )
 
@@ -80,24 +100,23 @@ class ProductionBatchViewSet(
     )
 
 
-# =====================================================
-# BATCH STAGE
-# =====================================================
-
 class BatchStageViewSet(
     viewsets.ModelViewSet
 ):
 
+    permission_classes = [IsEmployee]
+
     queryset = (
-
         BatchStage.objects
-
-        .all()
-
+        .select_related(
+            "batch"
+        )
         .order_by(
             "batch_id",
-            "sequence"
+            "sequence",
         )
     )
 
-    serializer_class = (BatchStageSerializer)
+    serializer_class = (
+        BatchStageSerializer
+    )

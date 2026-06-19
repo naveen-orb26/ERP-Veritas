@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.utils import timezone
 from django.db import transaction
 
 from rest_framework import serializers
@@ -114,6 +115,24 @@ class SalesOrderLineSerializer(
         source="product.product_name",
         read_only=True
     )
+    pending_quantity = serializers.IntegerField(
+        read_only=True
+    )
+        
+    order_number = serializers.CharField(
+        source="sales_order.order_number",
+        read_only=True
+    )
+
+    customer_name = serializers.CharField(
+        source="sales_order.customer.name",
+        read_only=True
+    )
+    sales_order = serializers.PrimaryKeyRelatedField(
+        read_only=True
+    )
+
+    pending_production_quantity = serializers.SerializerMethodField()
 
     class Meta:
 
@@ -122,16 +141,26 @@ class SalesOrderLineSerializer(
         fields = [
 
             "id",
+            
+            "sales_order",
 
             "product",
 
-            "product_name",
-
             "sr_number",
+            
+            "product_name",
+            
+            "order_number",
+            
+            "customer_name",
 
             "quantity",
-
+            
+            "pending_quantity",
+          
             "fulfilled_quantity",
+
+            "pending_production_quantity",
 
             "unit_price",
 
@@ -152,6 +181,8 @@ class SalesOrderLineSerializer(
 
             "sr_number",
 
+            "sales_order",
+
             "fulfilled_quantity",
 
             "line_total",
@@ -166,6 +197,22 @@ class SalesOrderLineSerializer(
         ]
 
 
+    def get_pending_production_quantity(
+        self,
+        obj
+    ):
+        requested = sum(
+
+            obj.production_requests.values_list(
+                "requested_quantity",
+                flat=True
+            )
+        )
+
+        return max(
+            obj.quantity - requested,
+            0
+        )
 # =====================================================
 # SALES ORDER LIST SERIALIZER
 # =====================================================
@@ -239,6 +286,11 @@ class SalesOrderCreateUpdateSerializer(
     serializers.ModelSerializer
 ):
 
+    order_date = serializers.DateField(
+        required=False,
+        default=timezone.localdate
+    )
+        
     lines = SalesOrderLineSerializer(
         many=True
     )
@@ -301,9 +353,11 @@ class SalesOrderCreateUpdateSerializer(
             "lines"
         )
 
-        validated_data[
-            "created_by"
-        ] = request.user
+        if request and request.user.is_authenticated:
+
+            validated_data[
+                "created_by"
+            ] = request.user
 
         order = SalesOrder.objects.create(
             **validated_data

@@ -1,90 +1,149 @@
-from django.db.models import Sum
 from rest_framework import serializers
 
-from .models import Inspection, Packet
-from production.models import Production
+from .models import (
+    Inspection,
+    Packet,
+)
 
 
-class InspectionSerializer(serializers.ModelSerializer):
+class InspectionSerializer(
+    serializers.ModelSerializer
+):
 
-    class Meta:
-        model = Inspection
-        fields = [
-            "id",
-            "production",
-            "accepted_quantity",
-            "rejected_quantity",
-            "inspection_date",
-            "remarks",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["created_at", "updated_at"]
-
-    def validate_accepted_quantity(self, value):
-        if value <= 0:
-            raise serializers.ValidationError(
-                "Accepted quantity must be greater than zero."
-            )
-        return value
-
-
-class PacketSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Packet
-        fields = [
-            "id",
-            "inspection",
-            "production",
-            "product",
-            "units_in_packet",
-            "manufacture_date",
-            "batch_number",
-            "allocation_type",
-            "sales_order_line",
-            "remarks",
-            "created_at",
-        ]
-        read_only_fields = ["created_at"]
-
-
-class PackingEntrySerializer(serializers.Serializer):
-
-    production = serializers.PrimaryKeyRelatedField(
-        queryset=Production.objects.all()
+    total_inspected = serializers.IntegerField(
+        read_only=True
     )
 
-    accepted_quantity = serializers.IntegerField()
-    rejected_quantity = serializers.IntegerField(required=False)
+    product_name = serializers.CharField(
+        source=(
+            "batch.production.product.product_name"
+        ),
+        read_only=True
+    )
 
-    units_per_packet = serializers.IntegerField()
-    number_of_packets = serializers.IntegerField()
+    job_card_number = serializers.CharField(
+        source=(
+            "batch.production.job_card_number"
+        ),
+        read_only=True
+    )
 
-    allocation_type = serializers.CharField()
-    sales_order_line = serializers.IntegerField(required=False)
+    batch_number = serializers.CharField(
+        source="batch.batch_number",
+        read_only=True
+    )
 
-    remarks = serializers.CharField(required=False, allow_blank=True)
+    customer_name = serializers.SerializerMethodField()
 
-    def validate(self, data):
+    class Meta:
 
-        production = data["production"]
-        accepted = data["accepted_quantity"]
-        units = data["units_per_packet"]
-        packets = data["number_of_packets"]
+        model = Inspection
 
-        if units * packets != accepted:
-            raise serializers.ValidationError(
-                "accepted_quantity must equal units_per_packet × number_of_packets"
-            )
+        fields = "__all__"
 
-        inspected_so_far = (
-            production.inspections.aggregate(total=Sum("accepted_quantity"))["total"] or 0
+        read_only_fields = [
+
+            "created_at",
+
+            "updated_at",
+        ]
+
+    def get_customer_name(
+        self,
+        obj
+    ):
+
+        request = (
+            obj.batch
+            .production
+            .production_request
         )
 
-        if inspected_so_far + accepted > production.planned_quantity:
-            raise serializers.ValidationError(
-                "Inspection exceeds planned production quantity."
+        sales_line = getattr(
+            request,
+            "sales_order_line",
+            None
+        )
+
+        if sales_line:
+
+            return str(
+                sales_line
+                .sales_order
+                .customer
             )
 
-        return data
+        return None
+
+
+class PacketSerializer(
+    serializers.ModelSerializer
+):
+
+    product_name = serializers.CharField(
+        source="product.product_name",
+        read_only=True
+    )
+
+    customer_name = serializers.SerializerMethodField()
+
+    sales_order_number = (
+        serializers.SerializerMethodField()
+    )
+
+    job_card_number = serializers.CharField(
+        source="production.job_card_number",
+        read_only=True
+    )
+
+    batch_number = serializers.CharField(
+        source=(
+            "inspection.batch.batch_number"
+        ),
+        read_only=True
+    )
+
+    label_data = serializers.ReadOnlyField()
+
+    class Meta:
+
+        model = Packet
+
+        fields = "__all__"
+
+        read_only_fields = [
+
+            "packet_number",
+
+            "allocation_type",
+
+            "sales_order_line",
+
+            "created_at",
+        ]
+
+    def get_customer_name(
+        self,
+        obj
+    ):
+
+        customer = obj.customer
+
+        return (
+            str(customer)
+            if customer
+            else None
+        )
+
+    def get_sales_order_number(
+        self,
+        obj
+    ):
+
+        order = obj.sales_order
+
+        return (
+            order.order_number
+            if order
+            else None
+        )

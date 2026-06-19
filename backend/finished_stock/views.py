@@ -1,28 +1,52 @@
-from django.shortcuts import render
-
 from rest_framework import viewsets
-from .models import FinishedStockPacket, FinishedStockMovement
+
+from core.permissions import IsEmployee
+
+from .models import (
+    FinishedStockPacket,
+    FinishedStockMovement,
+)
+
 from .serializers import (
     FinishedStockPacketSerializer,
-    FinishedStockMovementSerializer
+    FinishedStockMovementSerializer,
 )
 
 
-class FinishedStockPacketViewSet(viewsets.ModelViewSet):
+class FinishedStockPacketViewSet(
+    viewsets.ReadOnlyModelViewSet
+):
 
-    queryset = FinishedStockPacket.objects.all().order_by("-id")
-    serializer_class = FinishedStockPacketSerializer
+    permission_classes = [IsEmployee]
 
-    def perform_create(self, serializer):
+    queryset = (
+        FinishedStockPacket.objects
+        .select_related(
+            "packet",
+            "packet__inspection",
+            "packet__inspection__batch",
+            "packet__inspection__batch__production",
+        )
+        .order_by("-id")
+    )
 
-        stock_entry = serializer.save()
-
-        packet = stock_entry.packet
-        packet.status = "IN_STOCK"
-        packet.save(update_fields=["status"])
+    serializer_class = (
+        FinishedStockPacketSerializer
+    )
 
 
-class FinishedStockMovementViewSet(viewsets.ModelViewSet):
+class FinishedStockMovementViewSet(
+    viewsets.ReadOnlyModelViewSet
+):
 
-    queryset = FinishedStockMovement.objects.all().order_by("-id")
-    serializer_class = FinishedStockMovementSerializer
+    permission_classes = [IsEmployee]
+
+    queryset = (
+        FinishedStockMovement.objects
+        .select_related("product")
+        .order_by("-id")
+    )
+
+    serializer_class = (
+        FinishedStockMovementSerializer
+    )

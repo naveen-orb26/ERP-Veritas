@@ -62,6 +62,20 @@ class ProductionRequest(models.Model):
         related_name="production_requests"
     )
 
+    product = models.ForeignKey(
+
+        Product,
+
+        on_delete=models.PROTECT,
+
+        related_name="production_requests"
+    )
+        
+    sr_number = models.CharField(
+        max_length=100,
+        blank=True
+    )
+        
     requested_quantity = models.PositiveIntegerField(
         default=0
     )
@@ -86,6 +100,24 @@ class ProductionRequest(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True
     )
+
+    def save(self, *args, **kwargs):
+
+        if ( self.source_type == "SALES_ORDER" and self.sales_order_line):
+
+            self.requested_quantity = (
+
+                self.sales_order_line
+                .pending_quantity
+            )
+
+            self.sr_number = (
+
+                self.sales_order_line
+                .sr_number
+            )
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
 
@@ -144,7 +176,7 @@ class Production(models.Model):
     planned_quantity = models.PositiveIntegerField()
 
     production_date = models.DateField(
-        default=timezone.now
+        default=timezone.localdate
     )
 
     created_by = models.ForeignKey(

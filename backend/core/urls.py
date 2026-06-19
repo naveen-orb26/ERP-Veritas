@@ -1,24 +1,18 @@
 """
 URL configuration for core project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from packing.views import InspectionViewSet, PacketViewSet, PackingEntryView
 
+from django.conf import settings
+from django.conf.urls.static import static
+
+from rest_framework.routers import DefaultRouter
+
+# =====================================================
+# PRODUCTION
+# =====================================================
 
 from production.views import (
     ProductionViewSet,
@@ -27,105 +21,278 @@ from production.views import (
     BatchStageViewSet,
 )
 
+# =====================================================
+# PACKING / INSPECTION
+# =====================================================
+
+from packing.views import (
+    InspectionViewSet,
+    PacketViewSet,
+)
+
+# =====================================================
+# FINISHED STOCK
+# =====================================================
+
 from finished_stock.views import (
     FinishedStockPacketViewSet,
     FinishedStockMovementViewSet,
 )
-from dispatch.views import DispatchViewSet
-from sales.views import SalesOrderViewSet
 
-from invoicing.views import SalesInvoiceViewSet
-from invoicing.views import PaymentViewSet
+# =====================================================
+# DISPATCH
+# =====================================================
 
-
-# from reporting.views import (
-#     # RawMaterialStockSummaryView,
-#     FinishedGoodsStockSummaryView,
-#     DispatchSummaryView,
-#     SalesOrderProgressView,
-#     OutstandingPaymentsView,
-#     # PurchaseSummaryView,
-
-#     LowStockAlertView,
-#     OrderDelayReportView,
-#     AgingInventoryView,
-#     ProductionDispatchBalanceView,
-#     DailyProductionReportView,
-# )
-
-from raw_materials.views import (RawMaterialViewSet)
-
-from django.urls import path, include
-
-from django.conf import settings
-
-from django.conf.urls.static import static
-
-from recipes.views import (
-    RecipeViewSet
+from dispatch.views import (
+    DispatchViewSet,
 )
 
-from sampling.views import (DevelopmentSampleViewSet)
+# =====================================================
+# SALES
+# =====================================================
+
+from sales.views import (
+    PendingSalesOrderLineViewSet,
+    SalesOrderLineViewSet,
+    SalesOrderViewSet,
+)
+
+# =====================================================
+# INVOICING
+# =====================================================
+
+from invoicing.views import (
+    SalesInvoiceViewSet,
+    PaymentViewSet,
+)
+
+# =====================================================
+# RAW MATERIALS
+# =====================================================
+
+from raw_materials.views import (
+    RawMaterialViewSet,
+)
+
+# =====================================================
+# RECIPES
+# =====================================================
+
+from recipes.views import (
+    RecipeViewSet,
+)
+
+# =====================================================
+# SAMPLING
+# =====================================================
+
+from sampling.views import (
+    DevelopmentSampleViewSet,
+)
 
 
 router = DefaultRouter()
 
-router.register(r"production-requests", ProductionRequestViewSet,basename="production-request",)
-router.register(r'production', ProductionViewSet, basename='production')
-router.register(r"production-batches",ProductionBatchViewSet,basename="production-batch",)
-router.register(r"batch-stages",BatchStageViewSet,basename="batch-stage",)
+# =====================================================
+# PRODUCTION
+# =====================================================
+
+router.register(
+    r"production-requests",
+    ProductionRequestViewSet,
+    basename="production-request",
+)
+
+router.register(
+    r"production",
+    ProductionViewSet,
+    basename="production",
+)
+
+router.register(
+    r"production-batches",
+    ProductionBatchViewSet,
+    basename="production-batch",
+)
+
+router.register(
+    r"batch-stages",
+    BatchStageViewSet,
+    basename="batch-stage",
+)
 
 
-router.register(r"inspections", InspectionViewSet, basename="inspection")
-router.register(r"packets", PacketViewSet, basename="packet")
+# =====================================================
+# INSPECTION / PACKING
+# =====================================================
 
-router.register(r"stock", FinishedStockPacketViewSet, basename="stock")
-router.register(r"stock-movements", FinishedStockMovementViewSet, basename="stock-movement")
+router.register(
+    r"inspections",
+    InspectionViewSet,
+    basename="inspection",
+)
 
-router.register(r"dispatch", DispatchViewSet, basename="dispatch")
-router.register(r"sales-orders", SalesOrderViewSet, basename="sales-order")
+router.register(
+    r"packets",
+    PacketViewSet,
+    basename="packet",
+)
 
-router.register(r"invoices", SalesInvoiceViewSet, basename="invoice")
-router.register(r"payments", PaymentViewSet, basename="payment")
+# =====================================================
+# FINISHED STOCK
+# =====================================================
 
+router.register(
+    r"stock",
+    FinishedStockPacketViewSet,
+    basename="stock",
+)
 
+router.register(
+    r"stock-movements",
+    FinishedStockMovementViewSet,
+    basename="stock-movement",
+)
 
-router.register(r"raw-materials", RawMaterialViewSet,)
-router.register(r"recipes",RecipeViewSet,)
+# =====================================================
+# DISPATCH
+# =====================================================
 
-router.register(r"development-samples",DevelopmentSampleViewSet,)
+router.register(
+    r"dispatch",
+    DispatchViewSet,
+    basename="dispatch",
+)
 
+# =====================================================
+# SALES
+# =====================================================
+
+router.register(
+    r"sales-orders",
+    SalesOrderViewSet,
+    basename="sales-order",
+)
+
+router.register(
+    r"sales-order-lines",
+    SalesOrderLineViewSet,
+    basename="sales-order-line",
+)
+
+router.register(
+    r"pending-sales-order-lines",
+    PendingSalesOrderLineViewSet,
+    basename="pending-sales-order-lines",
+)
+    
+# =====================================================
+# INVOICING
+# =====================================================
+
+router.register(
+    r"invoices",
+    SalesInvoiceViewSet,
+    basename="invoice",
+)
+
+router.register(
+    r"payments",
+    PaymentViewSet,
+    basename="payment",
+)
+
+# =====================================================
+# RAW MATERIALS
+# =====================================================
+
+router.register(
+    r"raw-materials",
+    RawMaterialViewSet,
+)
+
+# =====================================================
+# RECIPES
+# =====================================================
+
+router.register(
+    r"recipes",
+    RecipeViewSet,
+)
+
+# =====================================================
+# DEVELOPMENT SAMPLES
+# =====================================================
+
+router.register(
+    r"development-samples",
+    DevelopmentSampleViewSet,
+)
+
+# =====================================================
+# URL PATTERNS
+# =====================================================
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    # production routes
-    path('api/', include(router.urls)),
-    path("api/packing-entry/", PackingEntryView.as_view()),
-    # path( "api/reports/raw-material-stock/", RawMaterialStockSummaryView.as_view(),),
-    # path("api/reports/finished-goods-stock/", FinishedGoodsStockSummaryView.as_view(),),
-    # path("api/reports/dispatch-summary/", DispatchSummaryView.as_view(),),
-    # path("api/reports/sales-order-progress/", SalesOrderProgressView.as_view(),),
-    # path("api/reports/outstanding-payments/", OutstandingPaymentsView.as_view(),),
-    # # path("api/reports/purchase-summary/", PurchaseSummaryView.as_view(),),
-    # path("api/reports/low-stock/", LowStockAlertView.as_view()),
-    # path("api/reports/order-delay/", OrderDelayReportView.as_view()),
-    # path("api/reports/aging-inventory/", AgingInventoryView.as_view()),
-    # path("api/reports/production-dispatch/", ProductionDispatchBalanceView.as_view()),
-    # path("api/reports/daily-production/", DailyProductionReportView.as_view()),
-    path("api/dashboard/", include("dashboard.urls"),),
-    path("api/auth/", include("authentication.urls"),),
-    path("api/", include("customers.urls"),),
-    path("api/", include("product_master.urls"),),
-    path("api/",include("inventory.urls"),),
-    path("api/",include("grn.urls")),
-    path("api/",include("vendors.urls")),
-    path("api/",include("raw_materials.urls")),
-    path("api/",include("vendors.urls")),
-    path("api/",include("grn.urls")),
-    path("api/",include("purchases.urls")),
+
+    path(
+        "admin/",
+        admin.site.urls
+    ),
+
+    path(
+        "api/",
+        include(router.urls)
+    ),
+
+    path(
+        "api/dashboard/",
+        include("dashboard.urls"),
+    ),
+
+    path(
+        "api/auth/",
+        include("authentication.urls"),
+    ),
+
+    path(
+        "api/",
+        include("customers.urls"),
+    ),
+
+    path(
+        "api/",
+        include("product_master.urls"),
+    ),
+
+    path(
+        "api/",
+        include("inventory.urls"),
+    ),
+
+    path(
+        "api/",
+        include("grn.urls"),
+    ),
+
+    path(
+        "api/",
+        include("vendors.urls"),
+    ),
+
+    path(
+        "api/",
+        include("raw_materials.urls"),
+    ),
+
+    path(
+        "api/",
+        include("purchases.urls"),
+    ),
 ]
 
 urlpatterns += static(
     settings.MEDIA_URL,
-    document_root=settings.MEDIA_ROOT
+    document_root=settings.MEDIA_ROOT,
 )
+

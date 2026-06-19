@@ -12,20 +12,15 @@ class FinishedStockPacket(models.Model):
         ("CONSUMED", "Consumed"),
     ]
 
-    packet = models.ForeignKey(
+    packet = models.OneToOneField(
         Packet,
         on_delete=models.CASCADE,
-        related_name="stock_entries"
+        related_name="stock_entry"
     )
 
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.PROTECT
+    added_to_stock_date = models.DateField(
+        default=timezone.now
     )
-
-    units_in_packet = models.PositiveIntegerField()
-
-    added_to_stock_date = models.DateField(default=timezone.now)
 
     status = models.CharField(
         max_length=20,
@@ -34,8 +29,25 @@ class FinishedStockPacket(models.Model):
     )
 
     def __str__(self):
-        return f"StockPacket-{self.id} | {self.product}"
-    
+
+        return self.packet.packet_number
+
+    @property
+    def product(self):
+
+        return self.packet.product
+
+    @property
+    def units_in_packet(self):
+
+        return self.packet.units_in_packet
+
+    @property
+    def customer(self):
+
+        return self.packet.customer
+
+
 class FinishedStockMovement(models.Model):
 
     MOVEMENT_CHOICES = [
@@ -57,11 +69,22 @@ class FinishedStockMovement(models.Model):
 
     quantity = models.PositiveIntegerField()
 
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(
+        default=timezone.now
+    )
 
-    reference_id = models.IntegerField(null=True, blank=True)
+    reference_id = models.IntegerField(
+        null=True,
+        blank=True
+    )
 
-    remarks = models.TextField(blank=True)
+    remarks = models.TextField(
+        blank=True
+    )
 
     def __str__(self):
-        return f"{self.product} | {self.movement_type}"
+
+        return (
+            f"{self.product} | "
+            f"{self.movement_type}"
+        )

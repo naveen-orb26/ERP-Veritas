@@ -1,39 +1,77 @@
 from rest_framework import serializers
-from .models import FinishedStockPacket, FinishedStockMovement
+
+from .models import (
+    FinishedStockPacket,
+    FinishedStockMovement
+)
+
+from packing.models import Packet
 
 
-class FinishedStockPacketSerializer(serializers.ModelSerializer):
+class FinishedStockPacketSerializer(
+    serializers.ModelSerializer
+):
+
+    packet_number = serializers.CharField(
+        source="packet.packet_number",
+        read_only=True
+    )
+
+    product_name = serializers.CharField(
+        source="packet.product.product_name",
+        read_only=True
+    )
+
+    customer_name = serializers.SerializerMethodField()
+
+    quantity = serializers.IntegerField(
+        source="packet.units_in_packet",
+        read_only=True
+    )
 
     class Meta:
+
         model = FinishedStockPacket
+
         fields = [
             "id",
+
             "packet",
-            "product",
-            "units_in_packet",
+
+            "packet_number",
+
+            "product_name",
+
+            "customer_name",
+
+            "quantity",
+
             "added_to_stock_date",
+
             "status",
         ]
-        def validate_packet(self, value):
 
-            if value.status != "AVAILABLE":
-                raise serializers.ValidationError(
-                    "Packet already used in stock or dispatch."
-                )
+        read_only_fields = fields
 
-            return value
+    def get_customer_name(
+        self,
+        obj
+    ):
 
+        customer = obj.packet.customer
 
-class FinishedStockMovementSerializer(serializers.ModelSerializer):
+        return (
+            str(customer)
+            if customer
+            else None
+        )
+    
+class FinishedStockMovementSerializer(
+    serializers.ModelSerializer
+):
 
     class Meta:
+
         model = FinishedStockMovement
-        fields = [
-            "id",
-            "product",
-            "movement_type",
-            "quantity",
-            "date",
-            "reference_id",
-            "remarks",
-        ]
+
+        fields = "__all__"
