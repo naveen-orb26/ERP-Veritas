@@ -325,13 +325,54 @@ class BatchStageSerializer(
     serializers.ModelSerializer
 ):
 
+    duration = (
+        serializers.SerializerMethodField()
+    )
+
     class Meta:
 
         model = BatchStage
 
-        fields = "__all__"
+        fields = [
 
+            "id",
 
+            "stage_name",
+
+            "sequence",
+
+            "status",
+
+            "started_at",
+
+            "completed_at",
+
+            "duration",
+
+            "remarks",
+
+            "batch",
+        ]
+
+    def get_duration(
+        self,
+        obj
+    ):
+
+        if (
+            obj.started_at
+            and obj.completed_at
+        ):
+
+            return (
+
+                obj.completed_at
+                -
+                obj.started_at
+
+            ).total_seconds()
+
+        return None
 
 # =====================================================
 # PRODUCTION BATCH
@@ -341,8 +382,8 @@ class ProductionBatchSerializer(
     serializers.ModelSerializer
 ):
     
-    current_stage = (
-        serializers.SerializerMethodField()
+    current_stage = serializers.CharField(
+        read_only=True
     )
 
     stage_progress = (
@@ -353,6 +394,26 @@ class ProductionBatchSerializer(
         many=True,
         read_only=True
     )
+
+    product_name = serializers.SerializerMethodField()
+
+    job_card_number = serializers.SerializerMethodField()
+
+    source_type = serializers.SerializerMethodField()
+
+    reference_number = serializers.SerializerMethodField()
+
+    customer_name = serializers.SerializerMethodField()
+
+    remaining_for_inspection = (
+        serializers.SerializerMethodField()
+    )
+
+    inspected_quantity = (
+        serializers.SerializerMethodField()
+    )   
+
+    inspection_complete = serializers.SerializerMethodField()
 
     class Meta:
 
@@ -365,21 +426,136 @@ class ProductionBatchSerializer(
             "batch_number",
 
             "created_at",
+
+            "inspection_complete",
         ]
 
-    def get_current_stage(
+
+    def get_inspection_complete(
         self,
         obj
     ):
 
-        stage = (
-            obj.current_stage
+        return (
+            obj.remaining_for_inspection == 0
         )
 
-        if not stage:
-            return None
+    def get_product_name(self, obj):
 
-        return stage.stage_name
+        return (
+            obj.production.product.product_name
+        )
+
+
+    def get_job_card_number(self, obj):
+
+        return (
+            obj.production.job_card_number
+        )
+
+
+    def get_source_type(self, obj):
+
+        return (
+            obj.production
+            .production_request
+            .source_type
+        )
+
+
+    def get_reference_number(self, obj):
+
+        request = (
+            obj.production
+            .production_request
+        )
+
+        if request.source_type == "SALES_ORDER":
+
+            line = request.sales_order_line
+
+            if line:
+
+                return (
+                    line.sales_order
+                    .order_number
+                )
+
+        if request.source_type == "PROJECTION":
+
+            return f"PRJ-{request.id}"
+
+        return f"MAN-{request.id}"
+
+
+    def get_customer_name(self, obj):
+
+        request = (
+            obj.production
+            .production_request
+        )
+
+        line = request.sales_order_line
+
+        if line:
+
+            return str(
+                line.sales_order.customer
+            )
+
+        return None
+
+
+    def get_inspected_quantity(self, obj):
+
+        total = 0
+
+        for inspection in (
+            obj.inspections.all()
+        ):
+
+            total += (
+                inspection.accepted_quantity
+                +
+                (
+                    inspection.rejected_quantity
+                    or 0
+                )
+            )
+
+        return total
+
+
+    def get_remaining_for_inspection(
+        self,
+        obj
+    ):
+
+        return (
+            obj.remaining_for_inspection
+        )
+
+    # def get_current_stage(
+    #     self,
+    #     obj
+    # ):
+
+    #     stage = obj.current_stage
+
+    #     if not stage:
+
+    #         return "Completed"
+
+    #     if isinstance(
+    #         stage,
+    #         str
+    #     ):
+
+    #         return stage
+
+    #     return (
+    #         stage.stage_name
+    #     )
 
     def get_stage_progress(
         self,
@@ -469,15 +645,11 @@ class ProductionSerializer(
     )
 
     produced_quantity = (
-        serializers.IntegerField(
-            read_only=True
-        )
+        serializers.SerializerMethodField()
     )
 
     total_rejected = (
-        serializers.IntegerField(
-            read_only=True
-        )
+        serializers.SerializerMethodField()
     )
 
     allocated_to_batches = (
@@ -515,6 +687,47 @@ class ProductionSerializer(
             "updated_at",
         ]
 
+
+    def get_produced_quantity(
+        self,
+        obj
+    ):
+
+        total = 0
+
+        for batch in obj.batches.all():
+
+            for inspection in (
+                batch.inspections.all()
+            ):
+
+                total += (
+                    inspection.accepted_quantity
+                    or 0
+                )
+
+        return total
+
+
+    def get_total_rejected(
+        self,
+        obj
+    ):
+
+        total = 0
+
+        for batch in obj.batches.all():
+
+            for inspection in (
+                batch.inspections.all()
+            ):
+
+                total += (
+                    inspection.rejected_quantity
+                    or 0
+                )
+
+        return total
     def get_order_number(self, obj):
 
         line = obj.production_request.sales_order_line

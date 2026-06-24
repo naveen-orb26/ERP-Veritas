@@ -258,7 +258,20 @@ JobCardDetail({
                                 font-medium
                               "
                             >
-                              {batch.batch_number}
+                              <Link
+                                href={
+                                    `/production/batches/${batch.id}/edit`
+                                }
+
+                                className="
+                                    text-blue-400
+                                    hover:underline
+                                "
+                                >
+
+                                {batch.batch_number}
+
+                                </Link>
                             </h3>
 
                             <p

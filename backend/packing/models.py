@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from datetime import date
 
 from product_master.models import Product
 from sales.models import SalesOrderLine
@@ -29,8 +30,10 @@ class Inspection(models.Model):
         blank=True
     )
 
-    inspection_date = models.DateField(default=timezone.now)
 
+    inspection_date = models.DateField(
+        default=date.today
+    )
     remarks = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -113,8 +116,36 @@ class Inspection(models.Model):
             if order else None
         )
 
+    @property
+    def packed_quantity(self):
+
+        return sum(
+
+            self.packets.values_list(
+
+                "units_in_packet",
+
+                flat=True
+            )
+        )
+
+
+    @property
+    def remaining_to_pack(self):
+
+        return max(
+
+            self.accepted_quantity
+            -
+            self.packed_quantity,
+
+            0
+        )
+
+
     def __str__(self):
         return ( f"Inspection-{self.id} | "f"{self.batch.batch_number}" )
+
     
 class Packet(models.Model):
 

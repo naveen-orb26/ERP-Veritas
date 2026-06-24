@@ -530,10 +530,11 @@ class ProductionBatch(models.Model):
             0
         )
 
+    
     @property
     def current_stage(self):
 
-        return (
+        stage = (
 
             self.stages
 
@@ -545,6 +546,12 @@ class ProductionBatch(models.Model):
 
             .first()
         )
+
+        if stage:
+
+            return stage
+
+        return "Completed"
     
     @property
     def stage_progress(self):
@@ -565,6 +572,9 @@ class ProductionBatch(models.Model):
         }
     
     def clean(self):
+
+        if not self.production_id:
+            return
 
         allocated = sum(
 
@@ -593,7 +603,7 @@ class ProductionBatch(models.Model):
 
                 "Batch quantity exceeds remaining Job Card quantity."
             )
-        
+            
     
     def __str__(self):
 
