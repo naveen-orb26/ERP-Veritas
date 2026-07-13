@@ -2,10 +2,9 @@ from rest_framework import serializers
 
 from .models import (
     Dispatch,
+    DispatchItem,
     DispatchPacket,
 )
-
-from packing.models import Packet
 
 
 class DispatchPacketSerializer(
@@ -22,25 +21,65 @@ class DispatchPacketSerializer(
         read_only=True
     )
 
+    batch_number = serializers.CharField(
+        source="packet.inspection.batch.batch_number",
+        read_only=True
+    )
+
     class Meta:
 
         model = DispatchPacket
 
         fields = [
+
             "id",
+
             "packet",
+
             "packet_number",
+
+            "batch_number",
+
             "quantity",
         ]
 
 
-class DispatchSerializer(
+class DispatchItemSerializer(
     serializers.ModelSerializer
 ):
 
-    packet_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True
+    product_name = serializers.CharField(
+        source="sales_order_line.product.product_name",
+        read_only=True
+    )
+
+    sr_number = serializers.CharField(
+        source="sales_order_line.sr_number",
+        read_only=True
+    )
+
+    ordered_quantity = serializers.IntegerField(
+        source="sales_order_line.quantity",
+        read_only=True
+    )
+
+    packed_quantity = serializers.IntegerField(
+        source="sales_order_line.packed_quantity",
+        read_only=True
+    )
+
+    already_dispatched = serializers.IntegerField(
+        source="sales_order_line.dispatched_quantity",
+        read_only=True
+    )
+
+    remaining_to_dispatch = serializers.IntegerField(
+        source="sales_order_line.remaining_to_dispatch",
+        read_only=True
+    )
+
+    allocated_quantity = serializers.IntegerField(
+        read_only=True
     )
 
     packets = DispatchPacketSerializer(
@@ -48,91 +87,97 @@ class DispatchSerializer(
         read_only=True
     )
 
-    quantity_dispatched = serializers.IntegerField(
+    class Meta:
+
+        model = DispatchItem
+
+        fields = "__all__"
+
+        read_only_fields = [
+
+            "dispatch",
+
+            "allocated_quantity",
+
+            "packets",
+
+            "product_name",
+
+            "sr_number",
+
+            "ordered_quantity",
+
+            "packed_quantity",
+
+            "already_dispatched",
+
+            "remaining_to_dispatch",
+        ]
+
+class DispatchSerializer(
+    serializers.ModelSerializer
+):
+
+    sales_order_number = serializers.CharField(
+        source="sales_order.order_number",
         read_only=True
+    )
+
+    customer_name = serializers.SerializerMethodField()
+
+    total_quantity = serializers.IntegerField(
+        read_only=True
+    )
+
+    items = DispatchItemSerializer(
+        many=True
     )
 
     class Meta:
 
         model = Dispatch
 
-        fields = [
-            "id",
-
-            "sales_order_line",
-
-            "packet_ids",
-
-            "packets",
-
-            "quantity_dispatched",
-
-            "awb_number",
-
-            "transporter",
-
-            "dispatch_date",
-
-            "remarks",
-
-            "created_at",
-        ]
+        fields = "__all__"
 
         read_only_fields = [
+
+            "dispatch_number",
+
             "created_at",
-            "quantity_dispatched",
-            "packets",
+
+            "total_quantity",
         ]
 
-    def validate_packet_ids(
+    def get_customer_name(
         self,
-        value
+        obj
     ):
 
-        packets = Packet.objects.filter(
-            id__in=value
+        return str(
+            obj.sales_order.customer
         )
-
-        if packets.count() != len(value):
-
-            raise serializers.ValidationError(
-                "One or more packets do not exist."
-            )
-
-        invalid = packets.exclude(
-            status="AVAILABLE"
-        )
-
-        if invalid.exists():
-
-            raise serializers.ValidationError(
-                "Some packets are already dispatched."
-            )
-
-        return value
 
     def create(
         self,
         validated_data
     ):
 
-        packet_ids = validated_data.pop(
-            "packet_ids"
+        items = validated_data.pop(
+            "items",
+            []
         )
 
         dispatch = Dispatch.objects.create(
             **validated_data
         )
 
-        packets = Packet.objects.filter(
-            id__in=packet_ids
-        )
+        for item in items:
 
-        for packet in packets:
+            DispatchItem.objects.create(
 
-            DispatchPacket.objects.create(
                 dispatch=dispatch,
-                packet=packet
+
+                **item
             )
 
         return dispatch

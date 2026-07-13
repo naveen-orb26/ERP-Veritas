@@ -22,6 +22,19 @@ class Inspection(models.Model):
         related_name="inspections",
 
     )
+    STATUS_CHOICES = [
+
+        ("PENDING", "Pending"),
+
+        ("COMPLETED", "Completed"),
+
+    ]
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+    )
 
     accepted_quantity = models.PositiveIntegerField()
 
@@ -178,9 +191,17 @@ class Packet(models.Model):
         unique=True,
         blank=True
     )
-
+    packet_sequence = models.PositiveIntegerField(
+        editable=False
+    )
+        
     units_in_packet = models.PositiveIntegerField()
 
+    is_partial_packet = models.BooleanField(
+        default=False,
+        editable=False,
+    )
+        
     manufacture_date = models.DateField(
         default=timezone.now
     )
@@ -265,13 +286,17 @@ class Packet(models.Model):
 
             "packet_number": self.packet_number,
 
+            "packet_sequence": self.packet_sequence,
+
+            "is_partial_packet": self.is_partial_packet,
+
             "customer_name": (
                 str(self.customer)
                 if self.customer
                 else None
             ),
 
-            "sales_order_number": (
+            "sales_order_number": (     
                 self.sales_order.order_number
                 if self.sales_order
                 else None
@@ -279,6 +304,10 @@ class Packet(models.Model):
 
             "product_name": (
                 self.product.product_name
+            ),
+
+            "base_unit": (
+                self.product.base_unit
             ),
 
             "quantity": self.units_in_packet,
@@ -298,6 +327,7 @@ class Packet(models.Model):
 
     def save(self, *args, **kwargs):
 
+        
         request = self.production_request
 
         if request:
@@ -362,24 +392,18 @@ class Packet(models.Model):
                 f"{reference}-"
             )
 
-            sequence = 1
+            sequence = (
+                Packet.objects.filter(
+                    inspection=self.inspection
+                ).count()
+                + 1
+            )
 
-            while True:
+            self.packet_sequence = sequence
 
-                candidate = (
-                    f"{prefix}"
-                    f"{str(sequence).zfill(3)}"
-                )
-
-                if not Packet.objects.filter(
-                    packet_number=candidate
-                ).exists():
-
-                    self.packet_number = candidate
-
-                    break
-
-                sequence += 1
+            self.packet_number = (
+                f"{prefix}{sequence:03d}"
+            )
 
         super().save(*args, **kwargs)
 

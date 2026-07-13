@@ -1,5 +1,5 @@
 import Link from "next/link"
-
+import StatusBadge from "@/components/common/status-badge"
 import {
   getJobCards,
 } from "@/lib/api/job-cards-server"
@@ -150,7 +150,7 @@ JobCardsPage() {
 
                           <Link
                             href={
-                              `/production/job-cards/${job.id}/edit`
+                              `/production/job-cards/${job.id}`
                             }
 
                             className="
@@ -251,26 +251,11 @@ JobCardsPage() {
 
                         <td className="p-4">
 
-                          <span
-                            className={
+                          <StatusBadge
 
-                              job.status ===
-                              "COMPLETED"
+                            status={job.status}
 
-                                ? "text-green-400"
-
-                              : job.status ===
-                                "IN_PROGRESS"
-
-                                ? "text-blue-400"
-
-                              : "text-yellow-400"
-                            }
-                          >
-
-                            {job.status}
-
-                          </span>
+                          />
 
                         </td>
 

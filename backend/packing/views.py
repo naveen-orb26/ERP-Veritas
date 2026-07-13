@@ -1,18 +1,4 @@
 from rest_framework import viewsets
-
-from core.permissions import IsEmployee
-
-from .models import (
-    Inspection,
-    Packet,
-)
-
-from .serializers import (
-    InspectionSerializer,
-    PacketSerializer,
-)
-
-from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
@@ -27,6 +13,9 @@ from .models import (
 
 from .serializers import (
     PacketSerializer,
+    InspectionCreateSerializer,
+    InspectionDetailSerializer,
+    InspectionListSerializer,
 )
 
 
@@ -51,62 +40,77 @@ class InspectionViewSet(
             "batch__production__product",
 
             "batch__production__production_request",
+
+            "batch__production__production_request__sales_order_line",
+
+            "batch__production__production_request__sales_order_line__sales_order",
+
+            "batch__production__production_request__sales_order_line__sales_order__customer",
+
+            "inspected_by",
+
         )
 
-        .order_by("-id")
+        .prefetch_related(
+            "packets",
+        )
+
+        .order_by("-created_at")
+
     )
+
+    def get_serializer_class(self):
+
+        if self.action == "list":
+
+            return InspectionListSerializer
+
+        elif self.action == "retrieve":
+
+            return InspectionDetailSerializer
+
+        return InspectionCreateSerializer
+
 
     @action(
         detail=False,
         methods=["get"],
         url_path="by-batch"
     )
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="by-batch",
+    )
     def by_batch(
         self,
-        request
+        request,
     ):
 
-        batch_id = request.GET.get(
-            "batch"
-        )
+        batch_id = request.GET.get("batch")
 
-        inspection = (
+        try:
 
-            Inspection.objects
-
-            .filter(
+            inspection = Inspection.objects.get(
                 batch_id=batch_id
             )
 
-            .order_by("-id")
-
-            .first()
-        )
-
-        if not inspection:
+        except Inspection.DoesNotExist:
 
             return Response(
                 {
-                    "detail":
-                    "Inspection not found."
+                    "detail": "Inspection not found."
                 },
-                status=404
+                status=404,
             )
 
-        serializer = (
-            self.get_serializer(
-                inspection
-            )
+        serializer = self.get_serializer(
+            inspection
         )
 
         return Response(
             serializer.data
         )
-
-    serializer_class = (
-        InspectionSerializer
-    )
-
 
 class PacketViewSet(
     viewsets.ModelViewSet
@@ -161,12 +165,23 @@ class PacketViewSet(
             "inspection"
         )
 
-        units_per_packet = int(
-            request.data.get(
-                "units_per_packet",
-                0
-            )
+        product = inspection.product
+
+        units_per_packet = request.data.get(
+            "units_per_packet"
         )
+
+        if units_per_packet:
+
+            units_per_packet = int(
+                units_per_packet
+            )
+
+        else:
+
+            units_per_packet = (
+                product.default_units_per_packet
+            )
 
         if units_per_packet <= 0:
 
@@ -174,10 +189,11 @@ class PacketViewSet(
 
                 {
                     "detail":
-                    "Units per packet must be greater than zero."
+                        "Default units per packet is not configured."
                 },
 
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
+
             )
 
         try:
@@ -218,20 +234,25 @@ class PacketViewSet(
 
         packets_created = []
 
+        sequence = 1
+
         while remaining > 0:
 
             qty = min(
-
                 units_per_packet,
-
-                remaining
+                remaining,
             )
 
             packet = Packet.objects.create(
 
                 inspection=inspection,
 
-                units_in_packet=qty
+                units_in_packet=qty,
+
+                is_partial_packet=(
+                    qty < units_per_packet
+                ),
+
             )
 
             packets_created.append(
@@ -239,6 +260,8 @@ class PacketViewSet(
             )
 
             remaining -= qty
+
+            sequence += 1
 
         return Response(
 

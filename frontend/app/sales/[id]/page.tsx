@@ -1,40 +1,41 @@
 import {
-
-  getSalesOrder,
-
+  getSalesOrderOverview,
 } from "@/lib/api/sales-server"
 
-import SalesDetailView
+import DetailView
 from "@/components/sales/detail-view"
 
+interface Props {
+
+  params: Promise<{
+
+    id: string
+
+  }>
+
+}
+
 export default async function
-SalesOrderDetailPage({
+SalesOrderPage({
 
   params,
 
-}: any) {
+}: Props) {
 
-  const resolvedParams =
+  const { id } =
     await params
 
-  const salesOrder =
-    await getSalesOrder(
-      resolvedParams.id
+  const order =
+    await getSalesOrderOverview(
+      id
     )
 
   return (
 
-    <div
-      className="
-        p-8
-        text-white
-      "
-    >
+    <DetailView
+      order={order}
+    />
 
-      <SalesDetailView
-        salesOrder={salesOrder}
-      />
-
-    </div>
   )
+
 }

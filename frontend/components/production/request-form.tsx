@@ -14,6 +14,15 @@ import {
   updateProductionRequest,
 } from "@/lib/api/production-client"
 
+import {
+
+  cancelProductionRequest,
+
+} from "@/lib/api/production-client"
+
+import Link from "next/link"
+
+
 type SalesOrderLine = {
 
   id: number
@@ -37,13 +46,30 @@ type SalesOrderLine = {
 
 type ProductionRequest = {
 
-  id: number
+  id:number
 
-  sales_order_line: number | null
+  sales_order_line:number|null
 
-  remarks: string
+  customer_name: string
 
-  allocated_quantity: number
+  order_number: string
+
+  sr_number: string
+
+  product_name: string
+
+  remarks:string
+
+  allocated_quantity:number
+
+  status:string
+
+  has_job_cards:boolean
+
+  remaining_quantity: number
+
+  requested_quantity: number
+
 }
 
 type Props = {
@@ -53,6 +79,10 @@ type Props = {
   salesLines: SalesOrderLine[]
 
   initialData?: ProductionRequest
+
+  initialSalesOrderLine?: number
+
+  fromSalesOrder?: boolean
 }
 
 function InfoCard({
@@ -101,14 +131,20 @@ export default function RequestForm({
 
   initialData,
 
+  initialSalesOrderLine,
+
+  fromSalesOrder,
+
+
 }: Props) {
 
   const router = useRouter()
 
-  const locked =
-
-    (initialData?.allocated_quantity || 0)
-    > 0
+  const locked = (initialData?.allocated_quantity || 0) > 0
+  
+  const preselectedLine = salesLines.find( line => line.id === initialSalesOrderLine)
+  
+  const hideSelectionFields =  fromSalesOrder === true
 
   const [
 
@@ -116,7 +152,24 @@ export default function RequestForm({
 
     setSelectedOrderId,
 
-  ] = useState("")
+  ] = useState(
+
+    preselectedLine
+
+      ? String(
+          preselectedLine.sales_order
+        )
+
+      : ""
+  )
+
+  const productionRequest = initialData
+
+  if (mode === "edit" && !productionRequest) {
+
+    return null
+
+  }
 
   const [
 
@@ -129,7 +182,14 @@ export default function RequestForm({
     initialData?.sales_order_line
       ?.toString()
 
-      || ""
+    ||
+
+    initialSalesOrderLine
+      ?.toString()
+
+    ||
+
+    ""
   )
 
   const [
@@ -212,20 +272,68 @@ export default function RequestForm({
 
   const selectedLine = useMemo(() => {
 
-    return salesLines.find(
+  const lineId =
 
-      (line) =>
+    mode === "edit"
 
-        line.id ===
-        Number(selectedLineId)
-    )
+      ? productionRequest?.sales_order_line
 
-  }, [
+      : Number(selectedLineId)
 
-    salesLines,
+  return salesLines.find(
 
-    selectedLineId,
-  ])
+    (line) =>
+
+      line.id === lineId
+
+  )
+
+}, [
+
+  salesLines,
+
+  selectedLineId,
+
+  productionRequest,
+
+  mode,
+
+])
+
+  async function
+    handleCancel(){
+
+      if(!initialData){
+
+        return
+
+      }
+
+      try{
+
+        await cancelProductionRequest(
+
+          initialData.id
+
+        )
+
+        router.push(
+
+          "/production/requests"
+
+        )
+
+        router.refresh()
+
+      }
+
+      catch(error){
+
+        console.error(error)
+
+      }
+
+    }
 
   async function handleSubmit(
     e: React.FormEvent
@@ -294,7 +402,19 @@ export default function RequestForm({
       setLoading(false)
     }
   }
+  console.log({
 
+  hideSelectionFields,
+
+  selectedLine,
+
+  selectedLineId,
+
+  initialSalesOrderLine,
+
+  initialData,
+
+})
   return (
 
     <form
@@ -306,7 +426,9 @@ export default function RequestForm({
         space-y-8
       "
     > 
+    
     {
+      
       locked && (
 
         <div
@@ -334,6 +456,11 @@ export default function RequestForm({
         </div>
       )
     }
+    {
+      
+        !hideSelectionFields && (
+
+      <>
 
       <div
         className="
@@ -343,7 +470,7 @@ export default function RequestForm({
           gap-6
         "
       >
-
+        
         <div>
 
           <label
@@ -445,9 +572,9 @@ export default function RequestForm({
           </select>
 
         </div>
-
+           
       </div>
-
+        
       <div>
 
         <label
@@ -521,7 +648,129 @@ export default function RequestForm({
 
       </div>
 
-      {
+    
+      </>
+
+            )
+            }
+
+        {
+          hideSelectionFields
+
+          &&
+
+          productionRequest
+
+          &&
+
+          (
+
+          <div
+
+          className="
+
+          mb-6
+
+          rounded-xl
+
+          border
+
+          border-zinc-800
+
+          p-6
+
+          "
+
+          >
+
+          <h2
+
+          className="
+
+          mb-4
+
+          text-lg
+
+          font-semibold
+
+          "
+
+          >
+
+          Sales Order Information
+
+          </h2>
+
+          <div
+
+          className="
+
+          grid
+
+          gap-4
+
+          md:grid-cols-2
+
+          "
+
+          >
+
+          <InfoCard
+
+          label="Sales Order"
+
+          value={productionRequest.order_number}
+
+          />
+
+          <InfoCard
+
+          label="Customer"
+
+          value={productionRequest.customer_name}
+
+          />
+
+          <InfoCard
+
+          label="SR Number"
+
+          value={productionRequest.sr_number}
+
+          />
+
+          <InfoCard
+
+          label="Product"
+
+          value={productionRequest.product_name}
+
+          />
+
+          <InfoCard
+
+          label="Requested Quantity"
+
+          value={productionRequest.requested_quantity}
+
+          />
+
+          <InfoCard
+
+          label="Pending Quantity"
+
+          value={productionRequest.remaining_quantity}
+
+          />
+
+          </div>
+
+          </div>
+
+          )
+          }
+
+        {
 
         selectedLine && (
 
@@ -610,6 +859,8 @@ export default function RequestForm({
         )
       }
 
+
+
       <div>
 
         <label
@@ -645,8 +896,9 @@ export default function RequestForm({
             p-3
           "
         />
-
+         
       </div>
+                
 
       {
 
@@ -660,43 +912,352 @@ export default function RequestForm({
         )
       }
 
-      <button
+      
+           {/* ===========================
+                    ACTION BUTTONS
+               =========================== */}
 
-        type="submit"
+                {
 
-        disabled={
-          loading ||
-          !selectedLineId
-        }
+                mode === "create"
 
-        className="
-          bg-white
-          text-black
+                &&
 
-          px-6
-          py-3
+                (
 
-          rounded-lg
+                <button
 
-          disabled:opacity-50
-        "
-      >
+                type="submit"
 
-        {
+                disabled={loading}
 
-          loading
+                className="
 
-            ? "Saving..."
+                mt-6
 
-            : mode === "create"
+                rounded-lg
 
-              ? "Create Production Request"
+                bg-emerald-600
 
-              : "Update Production Request"
-        }
+                px-5
 
-      </button>
+                py-2
 
+                font-medium
+
+                hover:bg-emerald-700
+
+                "
+
+                >
+
+                Create Production Request
+
+                </button>
+
+                )
+
+                }
+
+                {
+
+                mode === "edit"
+
+                &&
+
+                initialData?.status === "CANCELLED"
+
+                &&
+
+                (
+
+                <button
+
+                type="button"
+
+                disabled
+
+                className="
+
+                mt-6
+
+                rounded-lg
+
+                border
+
+                border-red-700
+
+                bg-red-900/30
+
+                px-5
+
+                py-2
+
+                cursor-not-allowed
+
+                "
+
+                >
+
+                Production Request Cancelled
+
+                </button>
+                
+              )
+              &&
+              (             <div
+                    className="
+                    mb-4
+                    rounded-lg
+                    border
+                    border-red-700
+                    bg-red-900/20
+                    p-3
+                    text-sm
+                    text-red-300
+                    "
+                    >
+
+                    This Production Request has been cancelled.
+                    No further Job Cards can be created. Kindly create new PR for proceeding.
+
+                    </div>)
+                
+
+                }
+                   
+
+
+                {
+
+                mode === "edit"
+
+                &&
+
+                initialData?.status !== "CANCELLED"
+
+                &&
+
+                !locked
+
+                &&
+
+                (
+
+                <button
+
+                type="button"
+
+                onClick={handleCancel}
+
+                className="
+
+                mt-6
+
+                rounded-lg
+
+                bg-red-600
+
+                px-5
+
+                py-2
+
+                font-medium
+
+                hover:bg-red-700
+
+                "
+
+                >
+
+                Cancel Production Request
+
+                </button>
+
+                )
+
+                }
+
+                {
+
+                  mode==="edit"
+
+                  &&
+
+                  initialData?.status!=="CANCELLED"
+
+                  && productionRequest
+
+                  &&
+
+                  (
+
+                  <div
+
+                  className="
+
+                  mt-8
+
+                  rounded-xl
+
+                  border
+
+                  border-zinc-800
+
+                  p-6
+
+                  "
+
+                  >
+
+                  <h2
+
+                  className="
+
+                  mb-4
+
+                  text-lg
+
+                  font-semibold
+
+                  "
+
+                  >
+
+                  Job Cards
+
+                  </h2>
+
+                  {
+                    productionRequest?.remaining_quantity === productionRequest?.requested_quantity ?
+
+                    (
+
+                    <Link
+
+                    href={`/production/job-cards/create?productionRequest=${productionRequest!.id}`}
+
+                    className="
+
+                    inline-flex
+
+                    rounded-lg
+
+                    bg-emerald-600
+
+                    px-5
+
+                    py-2
+
+                    "
+
+                    >
+
+                    Create Job Card
+
+                    </Link>
+
+                    )
+
+                    :
+
+                    productionRequest.remaining_quantity > 0
+
+                    ?
+
+                    (
+
+                    <div className="flex gap-3">
+
+                    <Link
+
+                    href={`/production/job-cards/create?productionRequest=${productionRequest!.id}`}
+
+                    className="
+
+                    inline-flex
+
+                    rounded-lg
+
+                    bg-emerald-600
+
+                    px-5
+
+                    py-2
+
+                    "
+
+                    >
+
+                    Create Job Card
+
+                    </Link>
+
+                    <Link
+
+                    href={`/production/job-cards/by-sales-line/${productionRequest!.sales_order_line}`}
+
+                    className="
+
+                    inline-flex
+
+                    rounded-lg
+
+                    bg-blue-600
+
+                    px-5
+
+                    py-2
+
+                    "
+
+                    >
+
+                    View Job Cards
+
+                    </Link>
+
+                    </div>
+
+                    )
+
+                    :
+
+                    (
+
+                    <Link
+
+                    href={`/production/job-cards/by-sales-line/${productionRequest!.sales_order_line}`}
+
+                    className="
+
+                    inline-flex
+
+                    rounded-lg
+
+                    bg-blue-600
+
+                    px-5
+
+                    py-2
+
+                    "
+
+                    >
+
+                    View Job Cards
+
+                    </Link>
+
+                    )
+                    }
+                  </div>
+
+                  )
+                  }
+
+                
     </form>
+  
   )
 }

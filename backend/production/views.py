@@ -1,5 +1,4 @@
 from django.utils import timezone
-from finished_stock import serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
@@ -17,6 +16,8 @@ from .models import (
 from .serializers import (
     ProductionRequestSerializer,
     ProductionSerializer,
+    ProductionListSerializer,
+    ProductionDetailSerializer,
     ProductionBatchSerializer,
     BatchStageSerializer,
 )
@@ -35,10 +36,8 @@ class ProductionRequestViewSet(
         .order_by("-id")
     )
 
-    serializer_class = (
-        ProductionRequestSerializer
-    )
-
+    serializer_class = ProductionRequestSerializer
+    
     def perform_destroy(self, instance):
 
         if instance.job_cards.exists():
@@ -49,6 +48,45 @@ class ProductionRequestViewSet(
             )
 
         instance.delete()
+    
+    @action(
+    detail=True,
+    methods=["post"],
+)
+    def cancel(
+        self,
+        request,
+        pk=None
+    ):
+
+        production_request = self.get_object()
+
+        if production_request.job_cards.exists():
+
+            return Response(
+
+                {
+                    "detail":
+                        "Production Request cannot be cancelled because Job Cards already exist."
+                },
+
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        production_request.status = "CANCELLED"
+
+        production_request.save(
+            update_fields=["status"]
+        )
+
+        return Response(
+
+            {
+                "detail":
+                    "Production Request cancelled successfully."
+            }
+        )
+            
 
 class ProductionViewSet(
     viewsets.ModelViewSet
@@ -58,33 +96,62 @@ class ProductionViewSet(
         IsEmployee
     ]
 
-    queryset = (
-        Production.objects
+    def perform_create(self, serializer):
 
-        .select_related(
-            "product",
+        serializer.save(
+            created_by=self.request.user
+        )
+        
+    def get_serializer_class(self):
 
-            "production_request",
+        if self.action == "list":
+            serializer = ProductionListSerializer
 
-            "production_request__sales_order_line",
+        elif self.action == "retrieve":
+            serializer = ProductionDetailSerializer
 
-            "production_request__sales_order_line__sales_order",
+        else:
+            serializer = ProductionSerializer
 
-            "production_request__sales_order_line__sales_order__customer",
+        print(
+            f">>> ACTION: {self.action} | SERIALIZER: {serializer.__name__}"
         )
 
-        .prefetch_related(
-            "batches",
-            "batches__inspections",
-            "materials",
+        return serializer
+
+    def get_queryset(self):
+
+        queryset = (
+            Production.objects
+            .select_related(
+                "product",
+                "production_request",
+                "production_request__sales_order_line",
+                "production_request__sales_order_line__sales_order",
+                "production_request__sales_order_line__sales_order__customer",
+            )
+            .prefetch_related(
+                "batches",
+                "batches__inspections",
+                "materials",
+            )
+            .order_by("-created_at")
         )
 
-        .order_by("-id")
-    )
+        sales_order_line = self.request.query_params.get(
+            "sales_order_line"
+        )
 
-    serializer_class = (
-        ProductionSerializer
-    )
+        if sales_order_line:
+
+            queryset = queryset.filter(
+
+                production_request__sales_order_line_id=sales_order_line
+
+            )
+
+        return queryset
+
 
 
 from django.utils import timezone
@@ -131,16 +198,58 @@ class ProductionBatchViewSet(
         ProductionBatchSerializer
     )
 
+    @property
+    def current_stage(self):
+
+        if self.status == "PLANNED":
+
+            return "Not Started"
+
+        if self.status == "PRODUCTION_COMPLETE":
+
+            return "Production Complete"
+
+        stage = (
+
+            self.stages
+
+            .filter(
+                status="IN_PROGRESS"
+            )
+
+            .first()
+
+        )
+
+        if stage:
+
+            return stage
+
+        stage = (
+
+            self.stages
+
+            .filter(
+                status="PENDING"
+            )
+
+            .order_by("sequence")
+
+            .first()
+
+        )
+
+        if stage:
+
+            return stage
+
+        return "Production"
+
     @action(
         detail=True,
         methods=["post"],
         url_path="start-stage",
     )
-    @action(
-    detail=True,
-    methods=["post"],
-    url_path="start-stage",
-)
     def start_stage(
         self,
         request,
@@ -148,6 +257,16 @@ class ProductionBatchViewSet(
     ):
 
         batch = self.get_object()
+
+        if batch.status == "PRODUCTION_COMPLETE":
+
+            return Response(
+                {
+                    "detail":
+                        "Production has already been completed."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         active_stage = (
 
@@ -158,6 +277,7 @@ class ProductionBatchViewSet(
             )
 
             .first()
+
         )
 
         if active_stage:
@@ -170,26 +290,18 @@ class ProductionBatchViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        completed_count = (
-
-            batch.stages
-
-            .filter(
-                status="COMPLETED"
-            )
-
-            .count()
-        )
-
         stage = (
 
             batch.stages
 
             .filter(
-                sequence=completed_count + 1
+                status="PENDING"
             )
 
+            .order_by("sequence")
+
             .first()
+
         )
 
         if not stage:
@@ -197,24 +309,16 @@ class ProductionBatchViewSet(
             return Response(
                 {
                     "detail":
-                        "No pending stages."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if stage.status != "PENDING":
-
-            return Response(
-                {
-                    "detail":
-                        "Stage cannot be started."
+                        "No pending stage."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         stage.status = "IN_PROGRESS"
 
-        stage.started_at = timezone.now()
+        if not stage.started_at:
+
+            stage.started_at = timezone.now()
 
         stage.save()
 
@@ -227,11 +331,16 @@ class ProductionBatchViewSet(
                 batch.start_time = timezone.now()
 
             batch.save(
-    update_fields=[
-        "status",
-        "start_time",
-    ]
-)
+                update_fields=[
+                    "status",
+                    "start_time",
+                ]
+            )
+        from .workflow import update_production_workflow
+
+        update_production_workflow(batch)
+
+        batch.refresh_from_db()
 
         return Response(
 
@@ -241,13 +350,14 @@ class ProductionBatchViewSet(
                     "request": request
                 }
             ).data
+
         )
 
     @action(
-    detail=True,
-    methods=["post"],
-    url_path="complete-stage",
-)
+        detail=True,
+        methods=["post"],
+        url_path="complete-stage",
+    )
     def complete_stage(
         self,
         request,
@@ -267,6 +377,7 @@ class ProductionBatchViewSet(
             .order_by("sequence")
 
             .first()
+
         )
 
         if not stage:
@@ -285,36 +396,38 @@ class ProductionBatchViewSet(
 
         stage.save()
 
-        remaining = (
+        pending_exists = (
 
             batch.stages
 
             .filter(
-                status__in=[
-                    "PENDING",
-                    "IN_PROGRESS",
-                ]
+                status="PENDING"
             )
 
             .exists()
+
         )
 
-        if remaining:
+        if not pending_exists:
 
-            batch.status = "IN_PROGRESS"
+            batch.status = "PRODUCTION_COMPLETE"
 
-        else:
+            if not batch.end_time:
 
-            batch.status = "COMPLETED"
+                batch.end_time = timezone.now()
 
-            batch.end_time = timezone.now()
+            batch.save(
+                update_fields=[
+                    "status",
+                    "end_time",
+                ]
+            )
 
-        batch.save(
-    update_fields=[
-        "status",
-        "end_time",
-    ]
-)   
+        from .workflow import update_production_workflow
+
+        update_production_workflow(batch)
+
+        batch.refresh_from_db()
 
         return Response(
 
@@ -324,8 +437,8 @@ class ProductionBatchViewSet(
                     "request": request
                 }
             ).data
-        )
 
+    )
 
 class BatchStageViewSet(
     viewsets.ModelViewSet

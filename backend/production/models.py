@@ -130,11 +130,11 @@ class Production(models.Model):
 
         ("DRAFT", "Draft"),
 
-        ("APPROVED", "Approved"),
+        ("READY", "Ready"),
 
         ("IN_PROGRESS", "In Progress"),
 
-        ("COMPLETED", "Completed"),
+        ("PRODUCTION_COMPLETE", "Production_Complete"),
 
         ("CANCELLED", "Cancelled"),
     ]
@@ -234,23 +234,19 @@ class Production(models.Model):
         )
     
     @property
-    def produced_quantity(self):
+    def accepted_quantity(self):
 
-        return (
+        return sum(
 
-            self.batches.aggregate(
+            inspection.accepted_quantity
 
-                total=Sum(
-                    "inspections__accepted_quantity"
-                )
+            for inspection in self.inspections.all()
 
-            )["total"]
-
-            or 0
         )
 
+
     @property
-    def total_rejected(self):
+    def rejected_quantity(self):
 
         return (
 
@@ -265,6 +261,59 @@ class Production(models.Model):
             or 0
         )
 
+
+    @property
+    def produced_quantity(self):
+
+        return (
+
+            self.accepted_quantity
+            +
+            self.rejected_quantity
+
+        )
+
+
+    @property
+    def remaining_quantity(self):
+
+        return max(
+
+            self.planned_quantity
+            -
+            self.accepted_quantity,
+
+            0
+
+        )
+
+
+    @property
+    def completion_percentage(self):
+
+        if self.planned_quantity == 0:
+
+            return 0
+
+        return round(
+
+            (
+                self.accepted_quantity
+                /
+                self.planned_quantity
+            ) * 100,
+
+            2
+
+        )
+
+
+    @property
+    def can_create_batch(self):
+
+        return self.remaining_to_batch > 0
+    
+    
     def generate_materials(self):
 
         if self.materials.exists():
@@ -405,12 +454,12 @@ class ProductionBatch(models.Model):
     )
 
     STATUS_CHOICES = [
-
         ("PLANNED", "Planned"),
-
+        ("READY", "Ready"),
         ("IN_PROGRESS", "In Progress"),
-
-        ("COMPLETED", "Completed"),
+        ("PRODUCTION_COMPLETE", "Production Complete"),
+        ("ON_HOLD", "On Hold"),
+        ("CANCELLED", "Cancelled"),
     ]
 
     status = models.CharField(
@@ -454,40 +503,58 @@ class ProductionBatch(models.Model):
         blank=True,
         null=True
     )
-
+        
     def create_default_stages(self):
 
         if self.stages.exists():
             return
+        print("Creating stages")
+        product = self.production.product
+        print(product)
 
-        product = (
-            self.production.product
-        )
-
-        sample = (
-            product.development_sample
-        )
+        print(product.development_sample)
+        
+        sample = product.development_sample
 
         if not sample:
             return
 
-        if sample.mid_code != "BTN":
-            return
+        ROUTES = {
 
-        stages = [
+            "BTN": [
 
-            "Mixing",
+                "Mixing",
 
-            "Casting",
+                "Casting",
 
-            "Turning",
+                "Turning",
 
-            "Polishing",
-        ]
+                "Polishing",
+
+            ],
+
+            "DEFAULT": [
+
+                "Production",
+
+            ],
+
+        }
+
+        stages = ROUTES.get(
+
+            sample.mid_code,
+
+            ROUTES["DEFAULT"],
+
+        )
 
         for index, stage in enumerate(
+
             stages,
-            start=1
+
+            start=1,
+
         ):
 
             BatchStage.objects.create(
@@ -496,10 +563,9 @@ class ProductionBatch(models.Model):
 
                 stage_name=stage,
 
-                sequence=index
-            )    
+                sequence=index,
 
-
+            )
     @property
     def inspected_quantity(self):
 
@@ -530,16 +596,75 @@ class ProductionBatch(models.Model):
             0
         )
 
-    
+    @property
+    def rejected_quantity(self):
+
+        return sum(
+
+            self.inspections.values_list(
+
+                "rejected_quantity",
+
+                flat=True,
+
+            )
+
+        )
+
+    @property
+    def packed_quantity(self):
+
+        return sum(
+
+            inspection.packed_quantity
+
+            for inspection in self.inspections.all()
+
+        )
+
+    @property
+    def remaining_to_pack(self):
+
+        return sum(
+
+            inspection.remaining_to_pack
+
+            for inspection in self.inspections.all()
+
+        )
+
     @property
     def current_stage(self):
+
+        if self.status == "PLANNED":
+
+            return "Not Started"
+
+        if self.status == "PRODUCTION_COMPLETE":
+
+            return "Production Complete"
 
         stage = (
 
             self.stages
 
-            .exclude(
-                status="COMPLETED"
+            .filter(
+                status="IN_PROGRESS"
+            )
+
+            .first()
+        )
+
+        if stage:
+
+            return stage
+
+        stage = (
+
+            self.stages
+
+            .filter(
+                status="PENDING"
             )
 
             .order_by("sequence")
@@ -551,7 +676,7 @@ class ProductionBatch(models.Model):
 
             return stage
 
-        return "Completed"
+        return "Production"
     
     @property
     def stage_progress(self):
@@ -665,6 +790,35 @@ class ProductionBatch(models.Model):
         if is_new:
 
             self.create_default_stages()
+    
+    @property
+    def inspection_completed(self):
+
+        return (
+
+            self.remaining_for_inspection == 0
+
+            and
+
+            self.inspections.exists()
+
+        )
+    
+    @property
+    def packing_completed(self):
+
+        if not self.inspections.exists():
+
+            return False
+
+        return all(
+
+            inspection.remaining_to_pack == 0
+
+            for inspection in self.inspections.all()
+
+        )
+    
 
 
 class BatchStage(models.Model):

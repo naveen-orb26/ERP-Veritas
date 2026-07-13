@@ -4,13 +4,10 @@ from rest_framework.permissions import (
     IsAuthenticated
 )
 
-from rest_framework.decorators import (
-    action
-)
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Exists, OuterRef
 
-from rest_framework.response import (
-    Response
-)
 
 from .models import SalesOrder
 
@@ -21,11 +18,18 @@ from .serializers import (
     SalesOrderDetailSerializer,
 
     SalesOrderCreateUpdateSerializer,
+
+    DispatchPreviewSerializer,
+
+    SalesOrderLineSerializer,
+
+    SalesOrderOverviewSerializer,
+
+    ProductionRequest,
+
 )
     
-from rest_framework import viewsets
 from .models import SalesOrderLine
-from .serializers import SalesOrderLineSerializer
 
 
 
@@ -60,6 +64,12 @@ class SalesOrderViewSet(
 
             return (
                 SalesOrderListSerializer
+            )
+
+        if self.action == "overview":
+
+            return (
+                SalesOrderOverviewSerializer
             )
 
         if self.action == "retrieve":
@@ -147,6 +157,44 @@ class SalesOrderViewSet(
             "detail":
                 "Sales order put on hold."
         })
+
+
+    @action(
+        detail=True,
+        methods=["post"]
+    )
+    def resume(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        if order.status != "ON_HOLD":
+
+            return Response({
+
+                "detail":
+                    "Only orders on hold "
+                    "can be resumed."
+
+            }, status=400)
+
+        order.status = "DRAFT"
+
+        order.save(
+            update_fields=["status"]
+        )
+
+        return Response({
+
+            "detail":
+                "Sales order resumed."
+
+        })
+
+
 
     @action(
         detail=True,
@@ -293,6 +341,48 @@ class SalesOrderViewSet(
                 "for dispatch."
         })
 
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="dispatch-preview",
+    )
+    def dispatch_preview(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        serializer = DispatchPreviewSerializer(
+            order
+        )
+
+        return Response(
+            serializer.data
+        )
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="overview",
+    )
+    def overview(
+        self,
+        request,
+        pk=None
+    ):
+
+        order = self.get_object()
+
+        serializer = (
+            SalesOrderOverviewSerializer(
+                order
+            )
+        )
+
+        return Response(
+            serializer.data
+        )
 
 class SalesOrderLineViewSet(
     viewsets.ReadOnlyModelViewSet
@@ -324,22 +414,50 @@ class PendingSalesOrderLineViewSet(
 
     queryset = (
 
-        SalesOrderLine.objects
+    SalesOrderLine.objects
 
-        .select_related(
-            "sales_order",
-            "sales_order__customer",
-            "product",
-        )
-
-        .filter(
-            sales_order__status="CONFIRMED",
-            quantity__gt=F(
-                "fulfilled_quantity"
-            )
-        )
-
-        .order_by(
-            "sales_order__order_date"
-        )
+    .select_related(
+        "sales_order",
+        "sales_order__customer",
+        "product",
     )
+
+    .annotate(
+
+        active_production_request=Exists(
+
+            ProductionRequest.objects.filter(
+
+                sales_order_line=OuterRef("pk")
+
+            ).exclude(
+
+                status="CANCELLED"
+
+            )
+
+        )
+
+    )
+
+    .filter(
+
+        sales_order__status="CONFIRMED",
+
+        quantity__gt=F(
+
+            "fulfilled_quantity"
+
+        ),
+
+        active_production_request=False,
+
+    )
+
+    .order_by(
+
+        "sales_order__order_date"
+
+    )
+
+)

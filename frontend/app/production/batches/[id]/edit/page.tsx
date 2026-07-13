@@ -3,7 +3,7 @@ import {
 } from "@/lib/api/batches-server"
 
 import BatchDetail from
-  "@/components/production/batch-detail"
+  "@/components/production/tracking/batch/batch-detail"
 
  export const dynamic =
   "force-dynamic"

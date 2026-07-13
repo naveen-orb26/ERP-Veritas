@@ -19,6 +19,20 @@ from .models import (
     SalesOrderEditLog,
 )
 
+from production.models import (
+    ProductionRequest,
+    Production,
+    ProductionBatch,
+)
+
+from packing.models import (
+    Inspection,
+    Packet,
+)
+
+from dispatch.models import (
+    DispatchItem,
+)
 
 # =====================================================
 # GST HELPERS
@@ -495,6 +509,16 @@ class SalesOrderCreateUpdateSerializer(
         validated_data
     ):
 
+        if self.instance:
+
+            if self.instance.status != "DRAFT":
+
+                raise serializers.ValidationError(
+
+                    "Only draft sales orders can be edited."
+
+                )
+            
         request = self.context.get(
             "request"
         )
@@ -702,3 +726,621 @@ class SalesOrderCreateUpdateSerializer(
                 )
 
         return instance
+    
+from rest_framework import serializers
+
+from .models import (
+    SalesOrder,
+    SalesOrderLine,
+)
+
+
+class DispatchPreviewLineSerializer(
+    serializers.ModelSerializer
+):
+
+    product_name = serializers.CharField(
+        source="product.product_name",
+        read_only=True
+    )
+
+    ordered_quantity = serializers.IntegerField(
+        source="quantity",
+        read_only=True
+    )
+
+    packed_quantity = serializers.IntegerField(
+        read_only=True
+    )
+
+    base_unit = serializers.CharField(
+        source="product.base_unit",
+        read_only=True
+    )
+        
+    dispatched_quantity = serializers.IntegerField(
+        read_only=True
+    )
+
+    remaining_to_dispatch = serializers.IntegerField(
+        read_only=True
+    )
+
+    class Meta:
+
+        model = SalesOrderLine
+
+        fields = [
+
+            "id",
+
+            "sr_number",
+
+            "product_name",
+
+            "ordered_quantity",
+
+            "packed_quantity",
+
+            "base_unit",
+
+            "dispatched_quantity",
+
+            "remaining_to_dispatch",
+        ]
+
+
+class DispatchPreviewSerializer(
+    serializers.ModelSerializer
+):
+
+    customer_name = serializers.CharField(
+        source="customer.name",
+        read_only=True
+    )
+
+    lines = DispatchPreviewLineSerializer(
+        many=True,
+        read_only=True
+    )
+
+    class Meta:
+
+        model = SalesOrder
+
+        fields = [
+
+            "id",
+
+            "order_number",
+
+            "customer_name",
+
+            "lines",
+        ]
+
+
+class SalesOrderOverviewLineSerializer(
+    serializers.ModelSerializer
+):
+
+    product_name = serializers.CharField(
+        source="product.product_name",
+        read_only=True
+    )
+
+    base_unit = serializers.CharField(
+        source="product.base_unit",
+        read_only=True
+    )
+
+    production_requested = serializers.SerializerMethodField()
+
+    produced_quantity = serializers.SerializerMethodField()
+
+    inspected_quantity = serializers.SerializerMethodField()
+
+    packed_quantity = serializers.SerializerMethodField()
+
+    dispatched_quantity = serializers.SerializerMethodField()
+
+    remaining_to_dispatch = serializers.SerializerMethodField()
+
+    production_request_id = serializers.SerializerMethodField()
+
+    batch_count = serializers.SerializerMethodField()
+
+    inspection_count = serializers.SerializerMethodField()
+
+    packet_count = serializers.SerializerMethodField()
+
+    dispatch_count = serializers.SerializerMethodField()
+
+    has_job_cards = serializers.SerializerMethodField()
+
+    workflow_state = serializers.SerializerMethodField()
+
+    job_card_id = serializers.SerializerMethodField()
+
+    class Meta:
+
+        model = SalesOrderLine
+
+        fields = [
+
+            "id",
+
+            "sr_number",
+
+            "product_name",
+
+            "quantity",
+
+            "fulfilled_quantity",
+
+            "base_unit",
+
+            "production_requested",
+
+            "produced_quantity",
+
+            "inspected_quantity",
+
+            "packed_quantity",
+
+            "dispatched_quantity",
+
+            "remaining_to_dispatch",
+
+            "production_request_id",
+
+            "has_job_cards",
+
+            "job_card_id",
+
+            "batch_count",
+
+            "inspection_count",
+
+            "packet_count",
+
+            "dispatch_count",
+
+            "workflow_state",
+        ]
+
+
+    def get_workflow_state(
+        self,
+        obj
+    ):
+
+        request = (
+
+            obj.production_requests
+
+            .exclude(
+
+                status="CANCELLED"
+
+            )
+
+            .first()
+
+        )
+
+        if not request:
+
+            return "NO_PR"
+
+        allocated = sum(
+
+            request.job_cards.values_list(
+
+                "planned_quantity",
+
+                flat=True
+
+            )
+
+        )
+
+        remaining = max(
+
+            request.requested_quantity -
+
+            allocated,
+
+            0
+
+        )
+
+        if allocated == 0:
+
+            return "PR_CREATED"
+
+        if remaining > 0:
+
+            return "PARTIALLY_ALLOCATED"
+
+        return "FULLY_ALLOCATED"
+
+
+
+    def get_production_requested(
+        self,
+        obj
+    ):
+
+        return sum(
+
+            obj.production_requests
+
+            .exclude(
+
+                status="CANCELLED"
+
+            )
+
+            .values_list(
+
+                "requested_quantity",
+
+                flat=True
+
+            )
+
+        )
+
+    def get_produced_quantity(
+        self,
+        obj
+    ):
+
+        total = 0
+
+        requests = obj.production_requests.all()
+
+        for request in requests:
+
+            for production in request.job_cards.all():
+
+                total += production.planned_quantity
+
+        return total
+
+    def get_inspected_quantity(
+        self,
+        obj
+    ):
+
+        total = 0
+
+        requests = obj.production_requests.all()
+
+        for request in requests:
+
+            for production in request.job_cards.all():
+
+                for batch in production.batches.all():
+
+                    for inspection in batch.inspections.all():
+
+                        total += (
+
+                            inspection.accepted_quantity
+                            +
+                            (
+                                inspection.rejected_quantity
+                                or 0
+                            )
+                        )
+
+        return total
+
+    def get_packed_quantity(
+        self,
+        obj
+    ):
+
+        return sum(
+
+            Packet.objects.filter(
+
+                sales_order_line=obj
+
+            ).values_list(
+
+                "units_in_packet",
+
+                flat=True
+            )
+        )
+
+    def get_dispatched_quantity(
+        self,
+        obj
+    ):
+
+        return obj.dispatched_quantity
+
+    def get_remaining_to_dispatch(
+        self,
+        obj
+    ):
+
+        return obj.remaining_to_dispatch
+    
+    def get_production_request_id(
+        self,
+        obj
+    ):
+
+        request = (
+
+            obj.production_requests
+
+            .exclude(
+
+                status="CANCELLED"
+
+            )
+
+            .first()
+
+        )
+        return (
+            request.id
+            if request
+            else None
+        )
+
+
+    def get_has_job_cards(
+        self,
+        obj
+    ):
+
+        request = (
+
+            obj.production_requests
+
+            .exclude(
+                status="CANCELLED"
+            )
+
+            .first()
+
+        )
+
+        if not request:
+
+            return False
+
+        return request.job_cards.exists()
+
+    def get_batch_count(
+        self,
+        obj
+    ):
+
+        count = 0
+
+        for request in (
+
+            obj.production_requests
+
+            .exclude(
+
+                status="CANCELLED"
+
+            )
+
+        ):
+            for production in (
+            request.job_cards.all()
+        ):
+
+                count += (
+                    production.batches.count()
+                )
+
+        return count
+
+
+    def get_inspection_count(
+        self,
+        obj
+    ):
+
+        return Inspection.objects.filter(
+
+            batch__production__production_request__sales_order_line=obj
+
+        ).count()
+
+
+    def get_packet_count(
+        self,
+        obj
+    ):
+
+        return Packet.objects.filter(
+
+            sales_order_line=obj
+
+        ).count()
+
+
+    def get_dispatch_count(
+        self,
+        obj
+    ):
+
+        return DispatchItem.objects.filter(
+
+            sales_order_line=obj
+
+        ).count()
+    
+    def get_job_card_id(
+        self,
+        obj
+    ):
+
+        request = (
+
+            obj.production_requests
+
+            .exclude(
+
+                status="CANCELLED"
+
+            )
+
+            .first()
+
+        )
+
+        if not request:
+
+            return None
+
+        production = (
+
+            request.job_cards
+
+            .first()
+
+        )
+
+        return (
+
+            production.id
+
+            if production
+
+            else None
+
+        )
+
+class SalesOrderOverviewSerializer(
+    serializers.ModelSerializer
+):
+
+    customer_name = serializers.CharField(
+        source="customer.name",
+        read_only=True
+    )
+
+    lines = SalesOrderOverviewLineSerializer(
+        many=True,
+        read_only=True
+    )
+
+    product_count = serializers.SerializerMethodField()
+
+    ordered_quantity = serializers.SerializerMethodField()
+
+    dispatched_quantity = serializers.SerializerMethodField()
+
+    completion_percentage = serializers.SerializerMethodField()
+
+    class Meta:
+
+        model = SalesOrder
+
+        fields = [
+
+            "id",
+
+            "order_number",
+
+            "customer_name",
+
+            "status",
+
+            "order_date",
+
+            "expected_delivery_date",
+
+            "priority_flag",
+
+            "remarks",
+
+            "product_count",
+
+            "ordered_quantity",
+
+            "dispatched_quantity",
+
+            "completion_percentage",
+
+            "lines",
+        ]
+
+    def get_product_count(
+        self,
+        obj
+    ):
+
+        return obj.lines.count()
+
+    def get_ordered_quantity(
+        self,
+        obj
+    ):
+
+        return sum(
+
+            obj.lines.values_list(
+
+                "quantity",
+
+                flat=True
+            )
+        )
+
+    def get_dispatched_quantity(
+        self,
+        obj
+    ):
+
+        return sum(
+
+            line.dispatched_quantity
+
+            for line in obj.lines.all()
+        )
+
+    def get_completion_percentage(
+        self,
+        obj
+    ):
+
+        ordered = self.get_ordered_quantity(
+            obj
+        )
+
+        if ordered == 0:
+
+            return 0
+
+        dispatched = (
+            self.get_dispatched_quantity(
+                obj
+            )
+        )
+
+        return round(
+
+            (
+                dispatched
+                /
+                ordered
+            )
+            *
+            100,
+
+            1
+        )

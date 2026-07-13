@@ -5,11 +5,31 @@ import {
   getPendingSalesOrderLines,
 } from "@/lib/api/production-server"
 
+interface Props {
+
+    searchParams: Promise<{
+
+    salesOrderLine?: string
+
+  }>
+
+}
+
 export default async function
-CreateProductionRequestPage() {
+CreateProductionRequestPage({
+
+  searchParams,
+
+}: Props) {
 
   const salesLines =
     await getPendingSalesOrderLines()
+
+  const {
+
+    salesOrderLine,
+
+  } = await searchParams
 
   return (
 
@@ -26,8 +46,21 @@ CreateProductionRequestPage() {
       </h1>
 
       <RequestForm
+
         mode="create"
+
         salesLines={salesLines}
+
+        initialSalesOrderLine={
+
+          salesOrderLine
+            ? Number(
+                salesOrderLine
+              )
+            : undefined
+
+        }
+
       />
 
     </div>

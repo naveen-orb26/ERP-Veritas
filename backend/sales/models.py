@@ -321,6 +321,7 @@ class SalesOrder(models.Model):
             *args,
             **kwargs
         )
+            
 class SalesOrderLine(models.Model):
 
     sales_order = models.ForeignKey(
@@ -411,6 +412,7 @@ class SalesOrderLine(models.Model):
 
         ordering = ["id"]
 
+   
     def __str__(self):
 
         return (
@@ -430,6 +432,50 @@ class SalesOrderLine(models.Model):
             self.quantity
             -
             self.fulfilled_quantity
+        )
+    @property
+    def dispatched_quantity(self):
+
+        return sum(
+
+            self.dispatch_items.values_list(
+
+                "dispatched_quantity",
+
+                flat=True
+            )
+        )
+
+
+    @property
+    def remaining_to_dispatch(self):
+
+        return max(
+
+            self.quantity
+            -
+            self.dispatched_quantity,
+
+            0
+        )
+    
+    @property
+    def packed_quantity(self):
+
+        from packing.models import Packet
+
+        return sum(
+
+            Packet.objects.filter(
+
+                sales_order_line=self
+
+            ).values_list(
+
+                "units_in_packet",
+
+                flat=True
+            )
         )
 
     def clean(self):

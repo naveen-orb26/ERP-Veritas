@@ -165,7 +165,7 @@ handleResume() {
       }
 
       {
-        status === "HOLD" && (
+        status === "ON_HOLD" && (
 
           <>
 

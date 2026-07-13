@@ -54,7 +54,7 @@ EditProductionRequestPage({
         "
       >
 
-        Edit Production Request
+        View Production Request
 
       </h1>
 
@@ -65,6 +65,11 @@ EditProductionRequestPage({
         initialData={request}
 
         salesLines={salesLines}
+
+         fromSalesOrder={
+          request.source_type === "SALES_ORDER"
+        }
+
       />
 
     </div>

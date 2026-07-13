@@ -211,12 +211,19 @@ ProductionRequestsPage() {
                         </span>
 
                         {
-                          request.remaining_quantity > 0 && (
                             
+                              request.status !== "CANCELLED"
+
+                              &&
+
+                              request.remaining_quantity > 0
+
+                              &&
+
+                              (
+
                             <a
-                              href={
-                                `/production/requests/${request.id}/job-cards/create`
-                              }
+                              href={`/production/job-cards/create?productionRequest=${request.id}`}
 
                               className="
                                 text-sm
@@ -228,8 +235,9 @@ ProductionRequestsPage() {
                               Create Job Card
 
                             </a>
-                          )
-                        }
+
+                            )
+                            }
 
                       </div>
 
